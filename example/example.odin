@@ -200,10 +200,38 @@ enumerate_muxers :: proc() {
 		printf("\t\tvideo codec:    %v\n", video_codec)
 		printf("\t\tsubtitle codec: %v\n", subtitle_codec)
 		printf("\t\tflags:          %v\n", flags)
+		if codec_tags != nil {
+			print_tags(codec_tags)
+		}
 		if priv_class != nil {
 			printf("\t\tpriv_class:     %v (avutil v%v)\n", priv_class.class_name, version_to_string(priv_class.av_util_verion))
 		}
 	}
+}
+
+print_tags :: proc(codec_tags: ^[^]avcodec.Codec_Tag) {
+	assert(codec_tags != nil)
+	using fmt
+
+	printf("\t\tcodec tags:     ")
+	tags := codec_tags[:]
+	idx := 0
+	for {
+		tag := tags[idx]
+		if int(tag.id) == 0{
+			break
+		}
+		if idx > 0 {
+			printf(", ")
+		}
+		printf("%v", avcodec.codec_tag_to_string(tag))
+		idx += 1
+		if idx == 6 {
+			printf("... more")
+			break
+		}
+	}
+	println()
 }
 
 enumerate_demuxers :: proc() {
@@ -221,6 +249,9 @@ enumerate_demuxers :: proc() {
 		printf("\t\tlong name:      %v\n", long_name)
 		printf("\t\tmime type:      %v\n", mime_type)
 		printf("\t\textensions:     %v\n", extensions)
+		if codec_tags != nil {
+			print_tags(codec_tags)
+		}
 		printf("\t\tflags:          %v\n", flags)
 		if priv_class != nil {
 			printf("\t\tpriv_class:     %v (avutil v%v)\n", priv_class.class_name, version_to_string(priv_class.av_util_verion))
@@ -232,10 +263,20 @@ do_default :: proc() {
 	using fmt
 
 	print_versions_and_config()
-	println("Simple example program.")
+	println("\nSimple example program.")
 	exe_name := strings.split(os.args[0], ".", context.temp_allocator)[0]
-	printf("usage: %v\n", exe_name)
+	printf("Usage:\n\t%v command [arguments]\n", exe_name)
 	println()
+}
+
+print_usage :: proc() {
+	using fmt
+
+	println(`Commands:
+	-codecs		Show a list of supported codecs.
+	-muxers		Show a list of supported muxers.
+	-demuxers	Show a list of supported demuxers.
+`)
 }
 
 example :: proc() {
@@ -243,16 +284,21 @@ example :: proc() {
 
 	if len(args) == 1 {
 		// Just the EXE name. Show usage.
-		do_default()
-		return
+		args = []string{""}
+	} else {
+		args = args[1:]	
 	}
-	args = args[1:]
 
 	command := strings.to_lower(args[0], context.temp_allocator)
 	switch command {
 	case "-codecs":   show_codecs()
 	case "-muxers":   enumerate_muxers()
 	case "-demuxers": enumerate_demuxers()
+	case "-h":        fallthrough
+	case:
+		do_default()
+		print_usage()
+		enumerate_muxers()
 	}
 }
 

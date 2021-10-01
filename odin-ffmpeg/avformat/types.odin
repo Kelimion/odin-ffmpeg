@@ -50,6 +50,9 @@ Format_Flag :: enum c.int {
 }
 Format_Flags :: bit_set[Format_Flag; c.int]
 
+/*
+	Muxers
+*/
 Output_Format :: struct {
 	name:       cstring,
 	long_name:  cstring,
@@ -69,19 +72,25 @@ Output_Format :: struct {
 		List of supported codec_id-codec_tag pairs, ordered by "better
 		choice first". The arrays are all terminated by .None
 	*/
-	codec_tags: [^]avcodec.Codec_Tag,
+	codec_tags: ^[^]avcodec.Codec_Tag,
 	priv_class: ^avutil.Class,
 
-	// The rest is private
+
+
+
+
 }
 
+/*
+	Demuxers
+*/
 Input_Format :: struct {
 	name:       cstring,
 	long_name:  cstring,
 	flags:      Format_Flags,
 	extensions: cstring,
 
-	codec_tag:  ^avcodec.Codec_Tag,
+	codec_tags:  ^[^]avcodec.Codec_Tag,
 	priv_class: ^avutil.Class,
 	mime_type:  cstring,
 

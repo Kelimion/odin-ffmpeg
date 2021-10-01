@@ -348,6 +348,7 @@ Codec_ID :: enum c.uint {
     ADPCM_G722,
     ADPCM_IMA_APC,
     ADPCM_VIMA,
+    ADPCM_VARIOUS,
 
     ADPCM_AFC = 0x11800,
     ADPCM_IMA_OKI,

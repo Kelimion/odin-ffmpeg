@@ -10,7 +10,10 @@ package ffmpeg_avcodec
 
 import "ffmpeg:avutil"
 import "core:c"
+import "core:strings"
 import "core:slice"
+import "core:fmt"
+
 
 Error :: avutil.Error
 
@@ -87,4 +90,30 @@ get_codec_descriptors :: proc(sorted := true, allocator := context.allocator) ->
 	}
 
 	return
+}
+
+codec_tag_to_string :: proc(tag: Codec_Tag) -> (codec_tag: string) {
+	tag := tag
+	using fmt
+
+	four_cc:  string
+	four_cc_binary := false
+	for b in tag.tag {
+		if b < 32 { four_cc_binary = true; break }
+	}
+
+	if four_cc_binary {
+		four_cc = ""
+	} else {
+		four_cc = string(tag.tag[:])
+	}
+
+	codec_id_s := tprintf("%v", tag.id)
+	if len(four_cc) > 0 {
+		return four_cc
+	} else if strings.contains(codec_id_s, "BAD ENUM VALUE") {
+		return tprintf("0x%08x", int(tag.id))
+	} else {
+		return codec_id_s
+	}
 }
