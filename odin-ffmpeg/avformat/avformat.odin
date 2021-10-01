@@ -8,6 +8,8 @@
 */
 package ffmpeg_avformat
 
+import "ffmpeg:types"
+
 when ODIN_OS == "windows" { foreign import avformat "avformat.lib"       }
 when ODIN_OS == "linux"   { foreign import avformat "system:libavformat" }
 
@@ -43,8 +45,8 @@ foreign avformat {
 */
 @(default_calling_convention="c", link_prefix="av_")
 foreign avformat {
-	muxer_iterate   :: proc(handle: ^rawptr) -> (muxer:   ^Output_Format) ---
-	demuxer_iterate :: proc(handle: ^rawptr) -> (demuxer: ^Input_Format) ---
+	muxer_iterate   :: proc(handle: ^rawptr) -> (muxer:   ^types.Output_Format) ---
+	demuxer_iterate :: proc(handle: ^rawptr) -> (demuxer: ^types.Input_Format) ---
 }
 
 /*

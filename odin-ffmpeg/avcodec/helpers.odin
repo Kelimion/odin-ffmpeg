@@ -8,27 +8,18 @@
 */
 package ffmpeg_avcodec
 
-import "ffmpeg:avutil"
-import "core:c"
+import "ffmpeg:types"
+
 import "core:strings"
 import "core:slice"
 import "core:fmt"
-
-
-Error :: avutil.Error
 
 version_semantic :: proc() -> (major, minor, micro: u32) {
 	v := version()
 	return v >> 16, (v >> 8) & 255, v & 255
 }
 
-Get_Codecs_Type :: enum c.int {
-	Decoder = 0,
-	Encoder = 1,
-	Both    = 2,
-}
-
-is_codec_type :: proc(codec: ^Codec, type: Get_Codecs_Type) -> (check: b32) {
+is_codec_type :: proc(codec: ^types.Codec, type: types.Get_Codecs_Type) -> (check: b32) {
 	switch type {
 	case .Decoder: return is_decoder(codec) > 0
 	case .Encoder: return is_encoder(codec) > 0
@@ -37,7 +28,7 @@ is_codec_type :: proc(codec: ^Codec, type: Get_Codecs_Type) -> (check: b32) {
 	unreachable()
 }
 
-next_codec_for_id :: proc(id: Codec_ID, iter: ^rawptr, type := Get_Codecs_Type.Both) -> (codec: ^Codec) {
+next_codec_for_id :: proc(id: types.Codec_ID, iter: ^rawptr, type := types.Get_Codecs_Type.Both) -> (codec: ^types.Codec) {
 	for codec = iterate(iter); codec != nil; codec = iterate(iter) {
 		if codec.id == id && is_codec_type(codec, type) {
 			return
@@ -46,7 +37,7 @@ next_codec_for_id :: proc(id: Codec_ID, iter: ^rawptr, type := Get_Codecs_Type.B
 	return nil
 }
 
-compare_codec_descriptors :: proc(a, b: ^Codec_Descriptor) -> (ordering: slice.Ordering) {
+compare_codec_descriptors :: proc(a, b: ^types.Codec_Descriptor) -> (ordering: slice.Ordering) {
 	assert(a != nil && b != nil)
 
 	// Sort based on codec type first
@@ -59,7 +50,8 @@ compare_codec_descriptors :: proc(a, b: ^Codec_Descriptor) -> (ordering: slice.O
 	return slice.cmp(a.name, b.name)
 }
 
-get_codec_descriptors :: proc(sorted := true, allocator := context.allocator) -> (codecs: []^Codec_Descriptor, err: Error) {
+get_codec_descriptors :: proc(sorted := true, allocator := context.allocator) -> (codecs: []^types.Codec_Descriptor, err: types.Error) {
+	using types
 	number_of_codecs := 0
 	descriptor: ^Codec_Descriptor = nil
 
@@ -92,7 +84,7 @@ get_codec_descriptors :: proc(sorted := true, allocator := context.allocator) ->
 	return
 }
 
-codec_tag_to_string :: proc(tag: Codec_Tag) -> (codec_tag: string) {
+codec_tag_to_string :: proc(tag: types.Codec_Tag) -> (codec_tag: string) {
 	tag := tag
 	using fmt
 

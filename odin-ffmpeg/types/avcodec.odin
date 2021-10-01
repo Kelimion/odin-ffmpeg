@@ -1,14 +1,13 @@
 /*
-	Odin bindings for FFmpeg's `avcodec` library.
+	Odin bindings for FFmpeg.
 	Bindings available under FFmpeg's license (GNU LGPL, v2.1+). See `LICENSE.md` in the package's top directory.
 
 	Copyright (c) 2021 Jeroen van Rijn. All rights reserved.
 
 	Libraries copyright their respective owner, available under their own licenses.
 */
-package ffmpeg_avcodec
+package ffmpeg_types
 
-import "ffmpeg:avutil"
 import "core:c"
 
 /*
@@ -20,6 +19,12 @@ INPUT_BUFFER_PADDING_SIZE :: 64
 	Minimum encoding buffer size.
 */
 INPUT_BUFFER_MIN_SIZE :: 16384
+
+Get_Codecs_Type :: enum c.int {
+	Decoder = 0,
+	Encoder = 1,
+	Both    = 2,
+}
 
 Discard :: enum {
 	None          = -16,
@@ -228,18 +233,18 @@ Channel_Layout :: bit_set[Channel; c.uint64_t]
 Codec :: struct {
 	name:                  cstring,
 	long_name:             cstring,
-	type:                  avutil.Media_Type,
+	type:                  Media_Type,
 	id:                    Codec_ID,
 	capabilities:          Codec_Capabilities,
 	max_lowres:            c.uint8_t,
 
-	supported_framerates:  [^]avutil.Rational,      // Array of supported framerates,        or NULL if any framerate. Terminated by {0, 0}
-	pixel_formats:         [^]avutil.Pixel_Format,  // Array of supported pixel formats,     or NULL if unknown.       Terminated by -1
+	supported_framerates:  [^]Rational,      // Array of supported framerates,        or NULL if any framerate. Terminated by {0, 0}
+	pixel_formats:         [^]Pixel_Format,  // Array of supported pixel formats,     or NULL if unknown.       Terminated by -1
 	supported_samplerates: [^]c.int,                // Array of supported audio samplerates, or NULL if unknown.       Terminated by 0
-	sample_formats:        [^]avutil.Sample_Format, // Array of supported sample formats,    or NULL if unknown.       Terminated by -1
+	sample_formats:        [^]Sample_Format, // Array of supported sample formats,    or NULL if unknown.       Terminated by -1
 	channel_layouts:       [^]Channel_Layout,       // Array of supported channel layouts,   or NULL if unknown.       Terminated by 0
 
-	priv_class:            ^avutil.Class,
+	priv_class:            ^Class,
 	profiles:              [^]Profile,              // Array of recognized profiles,         or NULL if unknown.        Terminated by .Profile_Unknown
 
 	wrapper_name:          cstring,
@@ -258,10 +263,10 @@ Codec :: struct {
 	sizeof(AVCodecContext) must not be used outside libav*.
 */
 Codec_Context :: struct {
-	av_class:         ^avutil.Class,
+	av_class:         ^Class,
 	log_level_offset: c.int,
 
-	codec_type:       avutil.Media_Type,
+	codec_type:       Media_Type,
 	codec:            ^Codec,
 	codec_id:         Codec_ID,
 
@@ -2651,7 +2656,7 @@ Codec_Descriptor_Properties :: bit_set[Codec_Descriptor_Property; c.int]
 
 Codec_Descriptor :: struct {
 	id:         Codec_ID,
-	type:       avutil.Media_Type,
+	type:       Media_Type,
 
 	/**
 	 * Name of the codec described by this descriptor. It is non-empty and

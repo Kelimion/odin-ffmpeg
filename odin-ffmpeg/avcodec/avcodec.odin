@@ -7,8 +7,8 @@
 	Libraries copyright their respective owner, available under their own licenses.
 */
 package ffmpeg_avcodec
-import "ffmpeg:avutil"
 
+import "ffmpeg:types"
 import "core:c"
 
 when ODIN_OS == "windows" { foreign import avcodec "avcodec.lib"       }
@@ -41,19 +41,19 @@ foreign avcodec {
 	license         :: proc() -> (license: cstring) ---
 
 	// Get codec name. Never nil.
-	get_name        :: proc(codec_id: Codec_ID) -> (codec_name: cstring) ---
+	get_name        :: proc(codec_id: types.Codec_ID) -> (codec_name: cstring) ---
 
 	// Get codec type.
-	get_type        :: proc(codec_id: Codec_ID) -> (media_type: avutil.Media_Type) ---
+	get_type        :: proc(codec_id: types.Codec_ID) -> (media_type: types.Media_Type) ---
 
 	// Iterate over codec descriptors
-	descriptor_next :: proc(prev: ^Codec_Descriptor) -> (next: ^Codec_Descriptor) ---
+	descriptor_next :: proc(prev: ^types.Codec_Descriptor) -> (next: ^types.Codec_Descriptor) ---
 
 	// Do we have a decoder for this codec?
-	find_decoder    :: proc(codec_id: Codec_ID) -> (decoder: ^Codec) ---
+	find_decoder    :: proc(codec_id: types.Codec_ID) -> (decoder: ^types.Codec) ---
 
 	// Do we have an encoder for this codec?
-	find_encoder    :: proc(codec_id: Codec_ID) -> (encoder: ^Codec) ---
+	find_encoder    :: proc(codec_id: types.Codec_ID) -> (encoder: ^types.Codec) ---
 }
 
 /*
@@ -62,13 +62,13 @@ foreign avcodec {
 @(default_calling_convention="c", link_prefix="av_codec_")
 foreign avcodec {
 	// Iterate over all codecs
-	iterate    :: proc(iter: ^rawptr) -> (codec: ^Codec) ---
+	iterate    :: proc(iter: ^rawptr) -> (codec: ^types.Codec) ---
 
 	// Codec is decoder
-	is_decoder :: proc(codec: ^Codec) -> c.int ---
+	is_decoder :: proc(codec: ^types.Codec) -> c.int ---
 
 	// Codec is encoder
-	is_encoder :: proc(codec: ^Codec) -> c.int ---
+	is_encoder :: proc(codec: ^types.Codec) -> c.int ---
 }
 /*
 	av_ac3_parse_header

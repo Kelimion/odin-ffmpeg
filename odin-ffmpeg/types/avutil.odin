@@ -1,12 +1,12 @@
 /*
-	Odin bindings for FFmpeg's `avutil` library.
-	Bindings available under FFmpeg's license (GNU LGPL, v2.1+). See `LICENSE.md` in the package's top directory.
+    Odin bindings for FFmpeg.
+    Bindings available under FFmpeg's license (GNU LGPL, v2.1+). See `LICENSE.md` in the package's top directory.
 
-	Copyright (c) 2021 Jeroen van Rijn. All rights reserved.
+    Copyright (c) 2021 Jeroen van Rijn. All rights reserved.
 
-	Libraries copyright their respective owner, available under their own licenses.
+    Libraries copyright their respective owner, available under their own licenses.
 */
-package ffmpeg_avutil
+package ffmpeg_types
 
 import "core:c"
 import "core:runtime"

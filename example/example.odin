@@ -14,6 +14,8 @@ VERSION :: "0.0.1"
 GIT_HASH_BYTES := #load_or("../.git/refs/heads/master", []u8{'u', 'n', 'k', 'n', 'o', 'w', 'n'})
 GIT_HASH       := string(GIT_HASH_BYTES)[:7]
 
+import "ffmpeg:types"
+
 import "ffmpeg:avcodec"
 import "ffmpeg:avdevice"
 import "ffmpeg:avfilter"
@@ -51,7 +53,7 @@ version_to_string :: proc(version: c.int) -> (version_string: string) {
 	return fmt.tprintf("%v.%v.%v", version >> 16, (version >> 8) & 255, version & 255)
 }
 
-print_tags :: proc(codec_tags: ^[^]avcodec.Codec_Tag) {
+print_tags :: proc(codec_tags: ^[^]types.Codec_Tag) {
 	assert(codec_tags != nil)
 	using fmt
 
@@ -76,7 +78,7 @@ print_tags :: proc(codec_tags: ^[^]avcodec.Codec_Tag) {
 	println()
 }
 
-print_codec :: proc(codec: ^avcodec.Codec) {
+print_codec :: proc(codec: ^types.Codec) {
 	using fmt
 	using codec
 
@@ -174,7 +176,7 @@ print_codec :: proc(codec: ^avcodec.Codec) {
 	}
 }
 
-codec_id_to_string :: proc(id: avcodec.Codec_ID) -> (codec_id: string) {
+codec_id_to_string :: proc(id: types.Codec_ID) -> (codec_id: string) {
 	using fmt
 	using avcodec
 
@@ -187,9 +189,10 @@ codec_id_to_string :: proc(id: avcodec.Codec_ID) -> (codec_id: string) {
 	return
 }
 
-print_codecs_for_id :: proc(id: avcodec.Codec_ID, type := avcodec.Get_Codecs_Type.Both) {
+print_codecs_for_id :: proc(id: types.Codec_ID, type := types.Get_Codecs_Type.Both) {
 	using fmt
 	using avcodec
+	using types
 
 	iter: rawptr
 	codec := &Codec{}
@@ -203,11 +206,13 @@ print_codecs_for_id :: proc(id: avcodec.Codec_ID, type := avcodec.Get_Codecs_Typ
 	printf(")")
 }
 
-print_channel_layout :: proc(channels: avcodec.Channel_Layout) {
+print_channel_layout :: proc(channels: types.Channel_Layout) {
 	using fmt
+	using types
+
 	first := true
 	printf("[")
-	for i in avcodec.Channel {
+	for i in Channel {
 		if i in channels {
 			if !first {
 				printf(", ")
@@ -219,10 +224,12 @@ print_channel_layout :: proc(channels: avcodec.Channel_Layout) {
 	printf("]")
 }
 
-print_codec_caps :: proc(flags: avcodec.Codec_Capabilities) {
+print_codec_caps :: proc(flags: types.Codec_Capabilities) {
 	using fmt
+	using types
+
 	first := true
-	for i in avcodec.Codec_Capability {
+	for i in Codec_Capability {
 		if i in flags {
 			if !first {
 				printf(", ")
@@ -234,10 +241,12 @@ print_codec_caps :: proc(flags: avcodec.Codec_Capabilities) {
 	println()
 }
 
-print_format_flags :: proc(flags: avformat.Format_Flags) {
+print_format_flags :: proc(flags: types.Format_Flags) {
 	using fmt
+	using types
+
 	first := true
-	for i in avformat.Format_Flag {
+	for i in Format_Flag {
 		if i in flags {
 			if !first {
 				printf(", ")
@@ -251,6 +260,7 @@ print_format_flags :: proc(flags: avformat.Format_Flags) {
 
 show_codecs_alt :: proc() {
 	using avcodec
+	using types
 
 	for id in Codec_ID {
 		if id == .NONE { continue }
@@ -269,6 +279,7 @@ show_codecs_alt :: proc() {
 
 show_codecs :: proc() {
 	using fmt
+	using types
 
 	println("Codecs:\n" + 
 		   " D..... = Decoding supported\n" +

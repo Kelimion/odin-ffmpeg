@@ -1,16 +1,14 @@
 /*
-	Odin bindings for FFmpeg's `avformat` library.
+	Odin bindings for FFmpeg.
 	Bindings available under FFmpeg's license (GNU LGPL, v2.1+). See `LICENSE.md` in the package's top directory.
 
 	Copyright (c) 2021 Jeroen van Rijn. All rights reserved.
 
 	Libraries copyright their respective owner, available under their own licenses.
 */
-package ffmpeg_avformat
+package ffmpeg_types
 
 import "core:c"
-import "ffmpeg:avutil"
-import "ffmpeg:avcodec"
 
 Probe_Data :: struct {
 	filename:  cstring,
@@ -62,9 +60,9 @@ Output_Format :: struct {
 	/*
 		Output support.
 	*/
-	audio_codec:    avcodec.Codec_ID, // Default Audio    Codec
-	video_codec:    avcodec.Codec_ID, // Default Video    Codec
-	subtitle_codec: avcodec.Codec_ID, // Default Subtitle Codec
+	audio_codec:    Codec_ID, // Default Audio    Codec
+	video_codec:    Codec_ID, // Default Video    Codec
+	subtitle_codec: Codec_ID, // Default Subtitle Codec
 
 	flags: Format_Flags,
 
@@ -72,8 +70,8 @@ Output_Format :: struct {
 		List of supported codec_id-codec_tag pairs, ordered by "better
 		choice first". The arrays are all terminated by .None
 	*/
-	codec_tags: ^[^]avcodec.Codec_Tag,
-	priv_class: ^avutil.Class,
+	codec_tags: ^[^]Codec_Tag,
+	priv_class: ^Class,
 
 
 
@@ -90,8 +88,8 @@ Input_Format :: struct {
 	flags:      Format_Flags,
 	extensions: cstring,
 
-	codec_tags:  ^[^]avcodec.Codec_Tag,
-	priv_class: ^avutil.Class,
+	codec_tags:  ^[^]Codec_Tag,
+	priv_class: ^Class,
 	mime_type:  cstring,
 
 	// The rest of the fields are not part of the public API.
@@ -224,7 +222,7 @@ Stream :: struct {
 	 *           written into the file (which may or may not be related to the
 	 *           user-provided one, depending on the format).
 	 */
-	time_base: avutil.Rational,
+	time_base: Rational,
 
 	/**
 	 * Decoding: pts of the first frame of the stream in presentation order, in stream time base.
@@ -247,14 +245,14 @@ Stream :: struct {
 	duration:    c.int64_t,
 	nb_frames:   c.int64_t,         ///< number of frames in this stream if known or 0
 	disposition: Disposition_Flags, /**< AV_DISPOSITION_* bit field */
-	discard:     avcodec.Discard,   ///< Selects which packets can be discarded at will and do not need to be demuxed.
+	discard:     Discard,   ///< Selects which packets can be discarded at will and do not need to be demuxed.
 
 	/**
 	 * sample aspect ratio (0 if unknown)
 	 * - encoding: Set by user.
 	 * - decoding: Set by libavformat.
 	 */
-	sample_aspect_ratio: avutil.Rational,
+	sample_aspect_ratio: Rational,
 
 	metadata: rawptr, // metadata: ^Dictionary,
 
@@ -265,7 +263,7 @@ Stream :: struct {
 	 *             avformat_find_stream_info().
 	 * - muxing: May be set by the caller before avformat_write_header().
 	 */
-	avg_frame_rate: avutil.Rational,
+	avg_frame_rate: Rational,
 
 	/**
 	 * For streams with AV_DISPOSITION_ATTACHED_PIC disposition, this packet
@@ -321,7 +319,7 @@ Stream :: struct {
 	 * For example, if the time base is 1/90000 and all frames have either
 	 * approximately 3600 or 1800 timer ticks, then r_frame_rate will be 50/1.
 	 */
-	r_frame_rate: avutil.Rational,
+	r_frame_rate: Rational,
 
 	/**
 	 * Codec parameters associated with this stream. Allocated and freed by
@@ -729,15 +727,15 @@ Codec_Parameters :: struct {
 	/**
 	 * General type of the encoded data.
 	 */
-	codec_type:            avutil.Media_Type,
+	codec_type:            Media_Type,
 	/**
 	 * Specific type of the encoded data (the codec used).
 	 */
-	codec_id:              avcodec.Codec_ID,
+	codec_id:              Codec_ID,
 	/**
 	 * Additional information about the codec (corresponds to the AVI FOURCC).
 	 */
-	codec_tag:             avcodec.FourCC,
+	codec_tag:             FourCC,
 
 	/**
 	 * Extra binary data needed for initializing the decoder, codec-dependent.
@@ -758,8 +756,8 @@ Codec_Parameters :: struct {
 	 * - audio: the sample format, the value corresponds to enum `Sample_Format`.
 	 */
 	format: struct #raw_union {
-		video: avutil.Pixel_Format,
-		audio: avutil.Sample_Format,
+		video: Pixel_Format,
+		audio: Sample_Format,
 	},
 
 	/**
@@ -812,7 +810,7 @@ Codec_Parameters :: struct {
 	 * When the aspect ratio is unknown / undefined, the numerator should be
 	 * set to 0 (the denominator may have any value).
 	 */
-	sample_aspect_ratio: avutil.Rational,
+	sample_aspect_ratio: Rational,
 
 	/**
 	 * Video only. The order of the fields in interlaced video.
@@ -823,11 +821,11 @@ Codec_Parameters :: struct {
 	 * Video only. Additional colorspace characteristics.
 	 */
 
-	color_range:           avutil.Color_Range,
-	color_primaries:       avutil.Color_Primaries,
-	color_trc:             avutil.Color_Transfer_Characteristic,
-	color_space:           avutil.Color_Space,
-	chroma_location:       avutil.Chroma_Location,
+	color_range:           Color_Range,
+	color_primaries:       Color_Primaries,
+	color_trc:             Color_Transfer_Characteristic,
+	color_space:           Color_Space,
+	chroma_location:       Chroma_Location,
 
 	/**
 	 * Video only. Number of delayed frames.

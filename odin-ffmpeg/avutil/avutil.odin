@@ -8,6 +8,8 @@
 */
 package ffmpeg_avutil
 
+import "../types"
+
 when ODIN_OS == "windows" { foreign import avutil "avutil.lib"       }
 when ODIN_OS == "linux"   { foreign import avutil "system:libavutil" }
 
@@ -40,7 +42,7 @@ foreign avutil {
 	/*
 		Describe media type.
 	*/
-	get_media_type_string :: proc(media_type: Media_Type) -> cstring ---
+	get_media_type_string :: proc(media_type: types.Media_Type) -> cstring ---
 }
 
 
