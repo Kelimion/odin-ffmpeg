@@ -51,30 +51,60 @@ version_to_string :: proc(version: c.int) -> (version_string: string) {
 	return fmt.tprintf("%v.%v.%v", version >> 16, (version >> 8) & 255, version & 255)
 }
 
+print_tags :: proc(codec_tags: ^[^]avcodec.Codec_Tag) {
+	assert(codec_tags != nil)
+	using fmt
+
+	printf("\t\tcodec tags:     ")
+	tags := codec_tags[:]
+	idx := 0
+	for {
+		tag := tags[idx]
+		if int(tag.id) == 0{
+			break
+		}
+		if idx > 0 {
+			printf(", ")
+		}
+		printf("%v", avcodec.codec_tag_to_string(tag))
+		idx += 1
+		if idx == 6 {
+			printf("... more")
+			break
+		}
+	}
+	println()
+}
+
 print_codec :: proc(codec: ^avcodec.Codec) {
 	using fmt
 	using codec
 
 	printf("[%v] %v\n", name, long_name)
-	printf("\tType:          %v\n", type)
-	printf("\tCapabilities:  %v\n", capabilities)
-	printf("\tMax Low Res:   %v\n", max_lowres)
-	printf("\tFramerates:    [")
-	if supported_framerates == nil {
-		printf("any")
-	} else {
+	printf("\tType:            %v\n", type)
+	if capabilities != {} {
+		printf("\tCapabilities:    ")
+		print_codec_caps(capabilities)		
+	}
+
+	if max_lowres != 0 {
+		printf("\tMax Low Res:     %v\n", max_lowres)	
+	}
+
+	if supported_framerates != nil {
+		printf("\tFramerates:      ")
 		fr  := supported_framerates[:]
 		for idx := 0; fr[idx] != {0, 0}; idx += 1 {
 			if idx > 0 {
 				printf(", ")
 			}
-			printf("%v", fr[idx])
+			printf("%3.3f fps", f64(fr[idx].numerator) / f64(fr[idx].denominator))
 		}
+		println()
 	}
-	printf("]\n")
 
 	if pixel_formats != nil {
-		printf("\tPixel Formats: [")
+		printf("\tPixel Formats:   ")
 		pf  := pixel_formats[:]
 		for idx := 0; pf[idx] != .NONE; idx += 1 {
 			if idx > 0 {
@@ -82,17 +112,79 @@ print_codec :: proc(codec: ^avcodec.Codec) {
 			}
 			printf("%v", pf[idx])
 		}
+		println()
 	}
-	printf("]\n")
 
-	// supported_samplerates: [^]c.int,                // Array of supported audio samplerates, or NULL if unknown.       Terminated by 0
-	// sample_formats:        [^]avutil.Sample_Format, // Array of supported sample formats,    or NULL if unknown.       Terminated by -1
-	// channel_layouts:       [^]c.uint64_t,           // Array of supported channel layouts,   or NULL if unknown.       Terminated by 0
-	// priv_class:            avutil.Class,
-	// profiles:              [^]Profile,              // Array of recognized profiles,         or NULL if unknown.        Terminated by .Profile_Unknown
-	if wrapper_name != nil {
-		printf("\twrapper name: %v\n", wrapper_name)	
+	if supported_samplerates != nil {
+		printf("\tSample Rates:    ")
+		ssr  := supported_samplerates[:]
+		for idx := 0; ssr[idx] != 0; idx += 1 {
+			if idx > 0 {
+				printf(", ")
+			}
+			printf("%v", ssr[idx])
+		}
+		println()
 	}
+
+	if sample_formats != nil {
+		printf("\tSample Formats:  ")
+		sf  := sample_formats[:]
+		for idx := 0; sf[idx] != .NONE; idx += 1 {
+			if idx > 0 {
+				printf(", ")
+			}
+			printf("%v", sf[idx])
+		}
+		println()
+	}
+
+	if channel_layouts != nil {
+		printf("\tChannel Layouts: ")
+		cl  := channel_layouts[:]
+		for idx := 0; cl[idx] != {}; idx += 1 {
+			if idx > 0 {
+				printf(", ")
+			}
+			print_channel_layout(cl[idx])
+		}
+		println()
+	}
+
+	if priv_class != nil {
+		printf("\tPriv Class:      %v (avutil v%v)\n", priv_class.class_name, version_to_string(priv_class.av_util_verion))
+	}
+
+	if profiles != nil {
+		printf("\tProfiles:        ")
+		p  := profiles[:]
+		for idx := 0; p[idx].name != nil; idx += 1 {
+			if idx > 0 {
+				printf(", ")
+			}
+			printf("%v", p[idx].name)
+		}
+		println()
+	}
+
+	// profiles:              [^]Profile,              // Array of recognized profiles,         or NULL if unknown.        Terminated by .Profile_Unknown
+
+	if wrapper_name != nil {
+		printf("\tWrapper name:    %v\n", wrapper_name)
+	}
+}
+
+codec_id_to_string :: proc(id: avcodec.Codec_ID) -> (codec_id: string) {
+	using fmt
+	using avcodec
+
+	codec_id = tprintf("%v", id)
+	if strings.contains(codec_id, "BAD ENUM") {
+		return tprintf("< 0x%08x >", i32(id))
+	} else if codec_id == "NONE" {
+		return "None"
+	}
+	return
 }
 
 print_codecs_for_id :: proc(id: avcodec.Codec_ID, type := avcodec.Get_Codecs_Type.Both) {
@@ -109,6 +201,70 @@ print_codecs_for_id :: proc(id: avcodec.Codec_ID, type := avcodec.Get_Codecs_Typ
 		}
 	}
 	printf(")")
+}
+
+print_channel_layout :: proc(channels: avcodec.Channel_Layout) {
+	using fmt
+	first := true
+	printf("[")
+	for i in avcodec.Channel {
+		if i in channels {
+			if !first {
+				printf(", ")
+			}
+			printf("%v", i)
+			first = false
+		}
+	}
+	printf("]")
+}
+
+print_codec_caps :: proc(flags: avcodec.Codec_Capabilities) {
+	using fmt
+	first := true
+	for i in avcodec.Codec_Capability {
+		if i in flags {
+			if !first {
+				printf(", ")
+			}
+			printf("%v", i)
+			first = false
+		}
+	}
+	println()
+}
+
+print_format_flags :: proc(flags: avformat.Format_Flags) {
+	using fmt
+	first := true
+	for i in avformat.Format_Flag {
+		if i in flags {
+			if !first {
+				printf(", ")
+			}
+			printf("%v", i)
+			first = false
+		}
+	}
+	println()
+}
+
+show_codecs_alt :: proc() {
+	using avcodec
+
+	for id in Codec_ID {
+		if id == .NONE { continue }
+
+		codec := &Codec{}
+		iter := rawptr(nil)
+
+		for iter = nil; codec != nil; codec = next_codec_for_id(id, &iter, .Both) {
+			if codec.name != "" {
+				print_codec(codec)
+				fmt.println()
+			}
+		}
+	}
 }
 
 show_codecs :: proc() {
@@ -177,7 +333,6 @@ show_codecs :: proc() {
 		}
 		println()
 	}
-
 	printf("\n%v codecs found.\n", i)
 }
 
@@ -193,45 +348,22 @@ enumerate_muxers :: proc() {
 		using muxer
 
 		printf("\t%v:\n", name)
-		printf("\t\tlong name:      %v\n", long_name)
-		printf("\t\tmime type:      %v\n", mime_type)
-		printf("\t\textensions:     %v\n", extensions)
-		printf("\t\taudio codec:    %v\n", audio_codec)
-		printf("\t\tvideo codec:    %v\n", video_codec)
-		printf("\t\tsubtitle codec: %v\n", subtitle_codec)
-		printf("\t\tflags:          %v\n", flags)
+		printf("\t\tLong name:      %v\n", long_name)
+		printf("\t\tMime type:      %v\n", mime_type)
+		printf("\t\tExtensions:     %v\n", extensions)
+		printf("\t\tAudio codec:    %v\n", codec_id_to_string(audio_codec))
+		printf("\t\tVideo codec:    %v\n", codec_id_to_string(video_codec))
+		printf("\t\tSubtitle codec: %v\n", codec_id_to_string(subtitle_codec))
+		printf("\t\tFlags:          ")
+		print_format_flags(flags)
+
 		if codec_tags != nil {
 			print_tags(codec_tags)
 		}
 		if priv_class != nil {
-			printf("\t\tpriv_class:     %v (avutil v%v)\n", priv_class.class_name, version_to_string(priv_class.av_util_verion))
+			printf("\t\tPriv_class:     %v (avutil v%v)\n", priv_class.class_name, version_to_string(priv_class.av_util_verion))
 		}
 	}
-}
-
-print_tags :: proc(codec_tags: ^[^]avcodec.Codec_Tag) {
-	assert(codec_tags != nil)
-	using fmt
-
-	printf("\t\tcodec tags:     ")
-	tags := codec_tags[:]
-	idx := 0
-	for {
-		tag := tags[idx]
-		if int(tag.id) == 0{
-			break
-		}
-		if idx > 0 {
-			printf(", ")
-		}
-		printf("%v", avcodec.codec_tag_to_string(tag))
-		idx += 1
-		if idx == 6 {
-			printf("... more")
-			break
-		}
-	}
-	println()
 }
 
 enumerate_demuxers :: proc() {
@@ -246,15 +378,17 @@ enumerate_demuxers :: proc() {
 		using demuxer
 
 		printf("\t%v:\n", name)
-		printf("\t\tlong name:      %v\n", long_name)
-		printf("\t\tmime type:      %v\n", mime_type)
-		printf("\t\textensions:     %v\n", extensions)
+		printf("\t\tLong name:      %v\n", long_name)
+		printf("\t\tMime type:      %v\n", mime_type)
+		printf("\t\tExtensions:     %v\n", extensions)
 		if codec_tags != nil {
 			print_tags(codec_tags)
 		}
-		printf("\t\tflags:          %v\n", flags)
+		printf("\t\tFlags:          ")
+		print_format_flags(flags)
+
 		if priv_class != nil {
-			printf("\t\tpriv_class:     %v (avutil v%v)\n", priv_class.class_name, version_to_string(priv_class.av_util_verion))
+			printf("\t\tPriv_class:     %v (avutil v%v)\n", priv_class.class_name, version_to_string(priv_class.av_util_verion))
 		}
 	}
 }
@@ -283,7 +417,9 @@ example :: proc() {
 	args := os.args
 
 	if len(args) == 1 {
-		// Just the EXE name. Show usage.
+		/*
+			Just the EXE name. Show usage.
+		*/
 		args = []string{""}
 	} else {
 		args = args[1:]	
@@ -291,14 +427,19 @@ example :: proc() {
 
 	command := strings.to_lower(args[0], context.temp_allocator)
 	switch command {
-	case "-codecs":   show_codecs()
+	case "-codecs":
+		if len(args) > 1 && args[1] == "alt" {
+			show_codecs_alt()
+		} else {
+			show_codecs()
+		}
 	case "-muxers":   enumerate_muxers()
 	case "-demuxers": enumerate_demuxers()
 	case "-h":        fallthrough
 	case:
 		do_default()
 		print_usage()
-		enumerate_muxers()
+		show_codecs_alt()
 	}
 }
 

@@ -190,9 +190,40 @@ Codec_Capability :: enum c.int {
 Codec_Capabilities :: bit_set[Codec_Capability; c.int]
 
 Profile :: struct {
-	profile: c.int,
-	name:    cstring,
+	id:                    c.int,
+	name:                  cstring,
 }
+
+Channel :: enum c.uint64_t {
+	Front_Left            =  0,
+	Front_Right           =  1,
+	Front_Center          =  2,
+	Low_Frequency         =  3,
+	Back_Left             =  4,
+	Back_Right            =  5,
+	Front_Left_of_Center  =  6,
+	Front_Right_of_Center =  7,
+	Back_Center           =  8,
+	Side_Left             =  9,
+	Side_Right            = 10,
+	Top_Center            = 11,
+	Top_Front_Left        = 12,
+	Top_Front_Center      = 13,
+	Top_Front_Right       = 14,
+	Top_Back_Left         = 15,
+	Top_Back_Center       = 16,
+	Top_Back_Right        = 17,
+	Stereo_Left           = 29, ///< Stereo downmix.
+	Stereo_Right          = 30, ///< See STEREO_LEFT.
+	Wide_Left             = 31,
+	Wide_Right            = 32,
+	Surround_Direct_Left  = 33,
+	Surround_Direct_Right = 34,
+	Low_Frequency_2       = 35,
+	Top_Side_Left         = 36,
+	Top_Side_Right        = 37,
+}
+Channel_Layout :: bit_set[Channel; c.uint64_t]
 
 Codec :: struct {
 	name:                  cstring,
@@ -206,9 +237,9 @@ Codec :: struct {
 	pixel_formats:         [^]avutil.Pixel_Format,  // Array of supported pixel formats,     or NULL if unknown.       Terminated by -1
 	supported_samplerates: [^]c.int,                // Array of supported audio samplerates, or NULL if unknown.       Terminated by 0
 	sample_formats:        [^]avutil.Sample_Format, // Array of supported sample formats,    or NULL if unknown.       Terminated by -1
-	channel_layouts:       [^]c.uint64_t,           // Array of supported channel layouts,   or NULL if unknown.       Terminated by 0
+	channel_layouts:       [^]Channel_Layout,       // Array of supported channel layouts,   or NULL if unknown.       Terminated by 0
 
-	priv_class:            avutil.Class,
+	priv_class:            ^avutil.Class,
 	profiles:              [^]Profile,              // Array of recognized profiles,         or NULL if unknown.        Terminated by .Profile_Unknown
 
 	wrapper_name:          cstring,
