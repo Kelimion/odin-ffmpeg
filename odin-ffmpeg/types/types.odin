@@ -3423,13 +3423,84 @@ Input_Format :: struct {
 	get_device_list:         #type proc(ctx:   ^Format_Context, device_list: ^Device_Info_List) -> i32,
 }
 
-IO_Context :: struct {
+IO_Dir_Entry_Type :: enum i32 {
+	Unknown,
+	Block_Device,
+	Character_Device,
+	Directory,
+	Named_Pipe,
+	Symbolic_Link,
+	Socket,
+	File,
+	Server,
+	Share,
+	Workgroup,
+}
 
+IO_Data_Marker_Type :: enum i32 {
+	Header,
+	Sync_Point,
+	Boundary_Point,
+	Unknown,
+	Trailer,
+	Flush_Point,
+}
+
+/*
+	Bytestream IO Context.
+
+	New public fields can be added with minor version bumps.
+	Removal, reordering and changes to existing public fields require a major version bump.
+	size_of(IO_Context) must not be used outside libav*.
+
+	Note: None of the function pointers in AVIOContext should be called directly,
+	they should only be set by the client application when implementing custom I/O.
+	Normally these are set to the function pointers specified in avio_alloc_context()
+*/
+IO_Context :: struct {
+	class:                   ^Class,
+
+	buffer:                  [^]u8,
+	buffer_size:             i32,
+
+	buf_ptr:                 ^u8,
+	buf_end:                 ^u8,
+
+	_opaque:                 rawptr,
+	read_packet:             #type proc(_opaque: rawptr,   buf: [^]u8,        buf_size:  i32            ) -> i32,
+	write_packet:            #type proc(_opaque: rawptr,   buf: [^]u8,        buf_size:  i32            ) -> i32,
+	seek:                    #type proc(_opaque: rawptr,   offset: i64,       whence:    i32            ) -> i64,
+
+	pos:                     i64,
+	eof_reached:             i32,
+	error:                   i32,
+	write_flag:              i32,
+
+	max_packet_size:         i32,
+	min_packet_size:         i32,
+	checksum:                u64,
+	checksum_ptr:            ^u8,
+
+	updatechecksum:          #type proc(checksum: u64,     buf: [^]u8,        size:      u32            ) -> u64,
+	read_pause:              #type proc(_opaque:  rawptr,  pause:        i32                            ) -> i32,
+	read_seek:               #type proc(_opaque:  rawptr,  stream_index: i32, timestamp: i64, flags: i32) -> i64,
+
+	seekable:                i32,
+	direct:                  i32,
+
+	protocol_whitelist:      cstring,
+	protocol_blacklist:      cstring,
+
+	write_data_type:         #type proc(_opaque:  rawptr,  buf: [^]u8,        buf_size: i32, type: IO_Data_Marker_Type, time: i64) -> i32,
+
+	ignore_boundary_point:   i32,
+	written:                 i64,
+	buf_ptr_max:             ^u8,
 }
 
 IO_Interrupt_CB :: struct {
-	callback: #type proc() -> i32,
-	opaque:   rawptr,
+	callback:                #type proc() -> i32,
+	opaque:                  rawptr,
 }
 
 /**
@@ -4902,10 +4973,10 @@ STREAM_INIT_IN_INIT_OUTPUT    :: 1 ///< stream parameters initialized in avforma
 FRAME_FILENAME_FLAGS_MULTIPLE :: 1 ///< Allow multiple %d
 
 Timebase_Source :: enum i32 {
-	AUTO = -1,
-	DECODER,
-	DEMUXER,
-	R_FRAMERATE,
+	Auto = -1,
+	Decoder,
+	Demuxer,
+	R_framerate,
 }
 
 /* ==============================================================================================
