@@ -309,14 +309,14 @@ Layout_7point1_Wide      :: Layout_5point1       + Channel_Layout{.Front_Left_of
 Layout_7point1_Wide_Back :: Layout_5point1_Back  + Channel_Layout{.Front_Left_of_Center, .Front_Right_of_Center}
 Layout_Octagonal         :: Layout_5point0       + Channel_Layout{.Back_Left,            .Back_Center,           .Back_Right}
 Layout_Hexadecagonal     :: Layout_Octagonal     + Channel_Layout{.Wide_Left,            .Wide_Right,            .Top_Back_Left,
-	                                                              .Top_Back_Right,       .Top_Back_Center,       .Top_Front_Center,
-	                                                              .Top_Front_Left,       .Top_Front_Right}
+																  .Top_Back_Right,       .Top_Back_Center,       .Top_Front_Center,
+																  .Top_Front_Left,       .Top_Front_Right}
 Layout_Stereo_Downmix    ::                        Channel_Layout{.Stereo_Left,          .Stereo_Right}
 Layout_22point2          :: Layout_5point1_Back  + Channel_Layout{.Front_Left_of_Center, .Front_Right_of_Center, .Back_Center,      .Low_Frequency_2,
-	                                                              .Side_Left,            .Side_Right,            .Top_Front_Left,   .Top_Front_Right,
-	                                                              .Top_Front_Center,     .Top_Center,            .Top_Back_Left,    .Top_Back_Right,
-	                                                              .Top_Side_Left,        .Top_Side_Right,        .Top_Back_Center,  .Bottom_Front_Center,
-	                                                              .Bottom_Front_Left,    .Bottom_Front_Right}
+																  .Side_Left,            .Side_Right,            .Top_Front_Left,   .Top_Front_Right,
+																  .Top_Front_Center,     .Top_Center,            .Top_Back_Left,    .Top_Back_Right,
+																  .Top_Side_Left,        .Top_Side_Right,        .Top_Back_Center,  .Bottom_Front_Center,
+																  .Bottom_Front_Left,    .Bottom_Front_Right}
 
 Codec :: struct {
 	name:                  cstring,
@@ -3285,7 +3285,7 @@ Codec_ID :: enum u32 {
 }
 
 /* ==============================================================================================
-      FORMATS - FORMATS - FORMATS - FORMATS - FORMATS - FORMATS - FORMATS - FORMATS - FORMATS
+	  FORMATS - FORMATS - FORMATS - FORMATS - FORMATS - FORMATS - FORMATS - FORMATS - FORMATS
    ============================================================================================== */
 
 Probe_Data :: struct {
@@ -4886,7 +4886,7 @@ Timebase_Source :: enum i32 {
 }
 
 /* ==============================================================================================
-      UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL
+	  UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL
    ============================================================================================== */
 
 Rounding :: enum i32 {
@@ -4975,8 +4975,8 @@ Option_Flags :: bit_set[Option_Flag; i32]
 Option :: struct {
 	name: cstring,
 	help: cstring,
-
 	option_offset: i32,
+
 	type: Option_Type,
 	default_val: struct #raw_union {
 		int_64: i64,
@@ -4994,7 +4994,7 @@ Option :: struct {
 
 Class :: struct {
 	class_name:                cstring,
-	item_name:                 proc(ctx: rawptr) -> cstring,
+	item_name:                 #type proc(ctx: rawptr) -> cstring,
 
 	option:                    ^Option,
 	av_util_verion:            i32,
@@ -5002,12 +5002,13 @@ Class :: struct {
 	log_level_offset_offset:   i32,
 	parent_log_context_offset: i32,
 
-	next_child:                proc(obj: rawptr, prev: rawptr) -> rawptr,
-	child_class_next:          proc(prev: ^Class) -> (next: ^Class),
 	category:                  Class_Category,
-	get_category:              proc(ctx: rawptr) -> (category: Class_Category),
-	query_ranges:              proc(ranges: ^[^]Option_Ranges, obj: rawptr, key: cstring, flags: Option_Flags) -> i32,
-	child_class_iterate:       proc(iter: ^rawptr) -> ^Class,
+
+	get_category:              #type proc(ctx: rawptr) -> (category: Class_Category),
+	query_ranges:              #type proc(ranges: ^[^]Option_Ranges, obj: rawptr, key: cstring, flags: Option_Flags) -> i32,
+
+	child_next:                #type proc(obj: rawptr, prev: rawptr) -> rawptr,
+	child_class_iterate:       #type proc(iter: ^rawptr) -> ^Class,
 }
 
 Option_Range :: struct {
@@ -5779,6 +5780,14 @@ Frame_Side_Data_Type :: enum i32 {
 	Detection_Bboxes,
 }
 
+Frame_Side_Data :: struct {
+	type:     Frame_Side_Data_Type,
+	data:     [^]u8,
+	size:     uint,
+	metadata: ^Dictionary,
+	buffer:   ^Buffer_Ref,
+}
+
 Active_Format_Description :: enum i32 {
 	Same            =  8,
 	AR_4_3          =  9,
@@ -5818,3 +5827,468 @@ HW_Frame_Mapping :: enum i32 {
 	Direct    = 8,
 }
 
+Buffer_Flag :: enum u32 {
+	Read_Only = 0,
+}
+Buffer_Flags :: bit_set[Buffer_Flag; u32]
+
+Buffer_Flag_Internal :: enum u32 {
+	/**
+	 * The buffer was av_realloc()ed, so it is reallocatable.
+	 */
+	Reallocatable = 0,
+	/**
+	 * The AVBuffer structure is part of a larger structure
+	 * and should not be freed.
+	 */
+	No_Free       = 1,
+}
+Buffer_Flags_Internal :: bit_set[Buffer_Flag_Internal; u32]
+
+/*
+	Reference counted buffer. Meant to be used through a Buffer_Ref
+*/
+Buffer :: struct {}
+
+Buffer_Ref :: struct {
+	buffer: ^Buffer,
+	data:   [^]u8,     // It is considered writable if and only if this is the only reference to the buffer,
+					   // in which case `buffer_is_writable()` returns 1.
+	size:   uint,
+}
+
+Buffer_Pool_Entry :: struct {}
+
+/*
+	This structure is opaque and not meant to be accessed directly.
+	It is allocated with `buffer_pool_init` and freed with `av_buffer_pool_uninit`.
+*/
+Buffer_Pool :: struct {}
+
+MUTEX_SIZE :: #config(MUTEX_SIZE, 1)
+Mutex      :: distinct [MUTEX_SIZE]u8
+
+Dictionary_Entry :: struct {
+	key:   cstring,
+	value: cstring,
+}
+
+Dictionary :: struct {
+	count:    u32,
+	elements: [^]Dictionary_Entry,
+}
+
+Region_of_Interest :: struct {
+	/**
+	 * Must be set to the size of this data structure (that is,
+	 * size_of(Region_of_Interest)).
+	 */
+	self_size: u32,
+
+	/**
+	 * Distance in pixels from the top edge of the frame to the top and
+	 * bottom edges and from the left edge of the frame to the left and
+	 * right edges of the rectangle defining this region of interest.
+	 *
+	 * The constraints on a region are encoder dependent, so the region
+	 * actually affected may be slightly larger for alignment or other
+	 * reasons.
+	 */
+	top:    i32,
+	bottom: i32,
+	left:   i32,
+	right:  i32,
+
+	 /**
+	  * Quantisation offset.
+	  *
+	  * Must be in the range -1 to +1.  A value of zero indicates no quality
+	  * change.  A negative value asks for better quality (less quantisation),
+	  * while a positive value asks for worse quality (greater quantisation).
+	  *
+	  * The range is calibrated so that the extreme values indicate the
+	  * largest possible offset - if the rest of the frame is encoded with the
+	  * worst possible quality, an offset of -1 indicates that this region
+	  * should be encoded with the best possible quality anyway.  Intermediate
+	  * values are then interpolated in some codec-dependent way.
+	  *
+	  * For example, in 10-bit H.264 the quantisation parameter varies between
+	  * -12 and 51.  A typical qoffset value of -1/10 therefore indicates that
+	  * this region should be encoded with a QP around one-tenth of the full
+	  * range better than the rest of the frame.  So, if most of the frame
+	  * were to be encoded with a QP of around 30, this region would get a QP
+	  * of around 24 (an offset of approximately -1/10 * (51 - -12) = -6.3).
+	  * An extreme value of -1 would indicate that this region should be
+	  * encoded with the best possible quality regardless of the treatment of
+	  * the rest of the frame - that is, should be encoded at a QP of -12.
+	  */
+	q_offet: Rational,
+}
+
+/*
+	Frame: https://ffmpeg.org/doxygen/trunk/structAVFrame.html
+
+	This structure describes decoded (raw) audio or video data.
+	Frame must be allocated using `frame_alloc`. Note that this only allocates the `Frame` itself,
+	the buffers for the data must be managed through other means (see below). `Frame` must be freed with `frame_free`.
+
+	`Frame` is typically allocated once and then reused multiple times to hold different data
+	(e.g. a single `Frame` to hold frames received from a decoder). In such a case, `frame_unref` will free
+	any references held by the frame and reset it to its original clean state before it is reused again.
+
+	The data described by a `Frame` is usually reference counted through the `Buffer` API.
+	The underlying buffer references are stored in `Frame.buf` / `Frame.extended_buf`.
+	A `Frame` is considered to be reference counted if at least one reference is set, i.e. if `Frame.buf[0]` != nil.
+
+	In such a case, every single data plane must be contained in one of the buffers in `Frame.buf` or `Frame.extended_buf`.
+	There may be a single buffer for all the data, or one separate buffer for each plane, or anything in between.
+
+	`size_of(Frame)` is not a part of the public ABI, so new fields may be added to the end with a minor bump.
+
+	Fields can be accessed through `Options`, the name string used matches the C structure field name for fields accessible through `Options`.
+	The `Class` for `Frame` can be obtained from `avcodec.get_frame_class`
+*/
+NUM_DATA_POINTERS :: 8
+
+Frame_Flag :: enum i32 {
+	/**
+	 * The frame data may be corrupted, e.g. due to decoding errors.
+	 */
+	Corrupt = 0,
+	/**
+	 * A flag to mark the frames which need to be decoded, but shouldn't be output.
+	 */
+	Discard = 2,
+}
+Frame_Flags :: bit_set[Frame_Flag; i32]
+
+Decode_Error_Flag :: enum i32 {
+	Invalid_Bitstream  = 0,
+	Missing_Reference  = 1,
+	Concealment_Active = 2,
+	Decode_Slices      = 3,
+}
+Decode_Error_Flags :: bit_set[Decode_Error_Flag; i32]
+
+Frame :: struct {
+	/**
+	 * pointer to the picture/channel planes.
+	 * This might be different from the first allocated byte
+	 *
+	 * Some decoders access areas outside 0,0 - width,height, please
+	 * see avcodec.align_dimensions2(). Some filters and swscale can read
+	 * up to 16 bytes beyond the planes, if these filters are to be used,
+	 * then 16 extra bytes must be allocated.
+	 *
+	 * NOTE: Except for hwaccel formats, pointers not needed by the format MUST be set to nil.
+	 */
+	data:                    [NUM_DATA_POINTERS][^]u8,
+
+	/**
+	 * For video, size in bytes of each picture line.
+	 * For audio, size in bytes of each plane.
+	 *
+	 * For audio, only linesize[0] may be set. For planar audio, each channel
+	 * plane must be the same size.
+	 *
+	 * For video the linesizes should be multiples of the CPUs alignment
+	 * preference, this is 16 or 32 for modern desktop CPUs.
+	 * Some code requires such alignment other code can be slower without
+	 * correct alignment, for yet other it makes no difference.
+	 *
+	 * @note The linesize may be larger than the size of usable data -- there
+	 * may be extra padding present for performance reasons.
+	 */
+	linesize:                [NUM_DATA_POINTERS]i32,
+
+	/**
+	 * pointers to the data planes/channels.
+	 *
+	 * For video, this should simply point to data[].
+	 *
+	 * For planar audio, each channel has a separate data pointer, and
+	 * linesize[0] contains the size of each channel buffer.
+	 * For packed audio, there is just one data pointer, and linesize[0]
+	 * contains the total size of the buffer for all channels.
+	 *
+	 * Note: Both data and extended_data should always be set in a valid frame,
+	 * but for planar audio with more channels that can fit in data,
+	 * extended_data must be used in order to access all channels.
+	 */
+	extended_data:           ^[^]u8,
+
+	/**
+	 * @name Video dimensions
+	 * Video frames only. The coded dimensions (in pixels) of the video frame,
+	 * i.e. the size of the rectangle that contains some well-defined values.
+	 *
+	 * @note The part of the frame intended for display/presentation is further
+	 * restricted by the @ref cropping "Cropping rectangle".
+	 * @{
+	 */
+	width:                   i32,
+	height:                  i32,
+
+	/**
+	 * number of audio samples (per channel) described by this frame
+	 */
+	nb_samples:              i32,
+
+	/**
+	 * format of the frame, -1 if unknown or unset
+	 * Values correspond to enum `Pixel_Format` for video frames, enum `Sample_Format` for audio)
+	 */
+	format: struct #raw_union {
+		video: Pixel_Format,
+		audio: Sample_Format,
+	},
+
+	/**
+	 * 1 -> keyframe, 0-> not
+	 */
+	key_frame:               b32,
+
+	/**
+	 * Picture type of the frame.
+	 */
+	pict_type:               Picture_Type,
+
+	/**
+	 * Sample aspect ratio for the video frame, 0/1 if unknown/unspecified.
+	 */
+	sample_aspect_ratio:     Rational,
+
+	/**
+	 * Presentation timestamp in time_base units (time when frame should be shown to user).
+	 */
+	pts:                     i64,
+
+	/**
+	 * DTS copied from the AVPacket that triggered returning this frame. (if frame threading isn't used)
+	 * This is also the Presentation time of this AVFrame calculated from
+	 * only AVPacket.dts values without pts values.
+	 */
+	pkt_dts:                 i64,
+
+	/**
+	 * picture number in bitstream order
+	 */
+	coded_picture_number:    i32,
+
+	/**
+	 * picture number in display order
+	 */
+	display_picture_number:  i32,
+
+	/**
+	 * quality (between 1 (good) and FF_LAMBDA_MAX (bad))
+	 */
+	quality:                 i32,
+
+	/**
+	 * for some private data of the user
+	 */
+	opaque:                  rawptr,
+
+	/**
+	 * When decoding, this signals how much the picture must be delayed.
+	 * extra_delay = repeat_pict / (2*fps)
+	 */
+	repeat_pict:             i32,
+
+	/**
+	 * The content of the picture is interlaced.
+	 */
+	interlaced_frame:        i32,
+
+	/**
+	 * If the content is interlaced, is top field displayed first.
+	 */
+	top_field_first:         i32,
+
+	/**
+	 * Tell user application that palette has changed from previous frame.
+	 */
+	palette_has_changed:     i32,
+
+	/**
+	 * reordered opaque 64 bits (generally an integer or a double precision float
+	 * PTS but can be anything).
+	 * The user sets AVCodecContext.reordered_opaque to represent the input at
+	 * that time,
+	 * the decoder reorders values as needed and sets AVFrame.reordered_opaque
+	 * to exactly one of the values provided by the user through AVCodecContext.reordered_opaque
+	 */
+	reordered_opaque:        i64,
+
+	/**
+	 * Sample rate of the audio data.
+	 */
+	sample_rate:             i32,
+
+	/**
+	 * Channel layout of the audio data.
+	 */
+	channel_layout:          Channel_Layout,
+
+	/**
+	 * AVBuffer references backing the data for this frame. If all elements of
+	 * this array are NULL, then this frame is not reference counted. This array
+	 * must be filled contiguously -- if buf[i] is non-NULL then buf[j] must
+	 * also be non-NULL for all j < i.
+	 *
+	 * There may be at most one AVBuffer per data plane, so for video this array
+	 * always contains all the references. For planar audio with more than
+	 * AV_NUM_DATA_POINTERS channels, there may be more buffers than can fit in
+	 * this array. Then the extra AVBufferRef pointers are stored in the
+	 * extended_buf array.
+	 */
+	buf:                     [NUM_DATA_POINTERS]^Buffer_Ref,
+
+	/**
+	 * For planar audio which requires more than AV_NUM_DATA_POINTERS
+	 * AVBufferRef pointers, this array will hold all the references which
+	 * cannot fit into AVFrame.buf.
+	 *
+	 * Note that this is different from AVFrame.extended_data, which always
+	 * contains all the pointers. This array only contains the extra pointers,
+	 * which cannot fit into AVFrame.buf.
+	 *
+	 * This array is always allocated using av_malloc() by whoever constructs
+	 * the frame. It is freed in av_frame_unref().
+	 */
+	extnded_buf:             ^[^]Buffer_Ref,
+
+	/**
+	 * Number of elements in extended_buf.
+	 */
+	nb_extended_buf:         i32,
+
+	side_data:               ^[^]Frame_Side_Data,
+	nb_side_data:            i32,
+
+	/**
+	 * Frame flags, a combination of @ref lavu_frame_flags
+	 */
+	flags:                   Frame_Flags,
+
+	/**
+	 * MPEG vs JPEG YUV range.
+	 * - encoding: Set by user
+	 * - decoding: Set by libavcodec
+	 */
+	color_range:             Color_Range,
+
+	color_primaries:         Color_Primaries,
+
+	color_trc:               Color_Transfer_Characteristic,
+
+	/**
+	 * YUV colorspace type.
+	 * - encoding: Set by user
+	 * - decoding: Set by libavcodec
+	 */
+	colorspace:              Color_Space,
+
+	chroma_location:         Chroma_Location,
+
+	/**
+	 * frame timestamp estimated using various heuristics, in stream time base
+	 * - encoding: unused
+	 * - decoding: set by libavcodec, read by user.
+	 */
+	best_effort_timestamp:   i64,
+
+	/**
+	 * reordered pos from the last `Packet` that has been input into the decoder
+	 * - encoding: unused
+	 * - decoding: Read by user.
+	 */
+	pkt_pos:                 i64,
+
+	/**
+	 * duration of the corresponding packet, expressed in `Stream.time_base` units, 0 if unknown.
+	 * - encoding: unused
+	 * - decoding: Read by user.
+	 */
+	pkt_duration:            i64,
+
+	/**
+	 * metadata.
+	 * - encoding: Set by user.
+	 * - decoding: Set by libavcodec.
+	 */
+	metadata:                ^Dictionary,
+
+	/**
+	 * decode error flags of the frame, set to a combination of
+	 * FF_DECODE_ERROR_xxx flags if the decoder produced a frame, but there
+	 * were errors during the decoding.
+	 * - encoding: unused
+	 * - decoding: set by libavcodec, read by user.
+	 */
+	decode_error_flags:      Decode_Error_Flags,
+
+
+	/**
+	 * number of audio channels, only used for audio.
+	 * - encoding: unused
+	 * - decoding: Read by user.
+	 */
+	channels:                i32,
+
+	/**
+	 * size of the corresponding packet containing the compressed
+	 * frame.
+	 * It is set to a negative value if unknown.
+	 * - encoding: unused
+	 * - decoding: set by libavcodec, read by user.
+	 */
+	pkt_size:                i32,
+
+	/**
+	 * For hwaccel-format frames, this should be a reference to the
+	 * AVHWFramesContext describing the frame.
+	 */
+	hw_frames_ctx:           ^Buffer_Ref,
+
+	/**
+	 * AVBufferRef for free use by the API user. FFmpeg will never check the
+	 * contents of the buffer ref. FFmpeg calls av_buffer_unref() on it when
+	 * the frame is unreferenced. av_frame_copy_props() calls create a new
+	 * reference with av_buffer_ref() for the target frame's opaque_ref field.
+	 *
+	 * This is unrelated to the opaque field, although it serves a similar
+	 * purpose.
+	 */
+	opaque_ref:              ^Buffer_Ref,
+
+	/**
+	 * @anchor cropping
+	 * @name Cropping
+	 * Video frames only. The number of pixels to discard from the the
+	 * top/bottom/left/right border of the frame to obtain the sub-rectangle of
+	 * the frame intended for presentation.
+	 * @{
+	 */
+	crop_top:                i64,
+	crop_bottom:             i64,
+	crop_left:               i64,
+	crop_right:              i64,
+	/**
+	 * @}
+	 */
+
+	/**
+	 * AVBufferRef for internal use by a single libav* library.
+	 * Must not be used to transfer data between libraries.
+	 * Has to be NULL when ownership of the frame leaves the respective library.
+	 *
+	 * Code outside the FFmpeg libs should never check or change the contents of the buffer ref.
+	 *
+	 * FFmpeg calls av_buffer_unref() on it when the frame is unreferenced.
+	 * av_frame_copy_props() calls create a new reference with av_buffer_ref()
+	 * for the target frame's private_ref field.
+	 */
+	private_ref:             ^Buffer_Ref,
+}
