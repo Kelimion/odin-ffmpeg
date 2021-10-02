@@ -8,7 +8,6 @@
 */
 package ffmpeg_types
 
-import "core:c"
 import "core:runtime"
 
 FFmpeg_Error :: enum {
@@ -34,7 +33,7 @@ INPUT_BUFFER_MIN_SIZE :: 16384
 	   CODECS - CODECS - CODECS - CODECS - CODECS - CODECS - CODECS - CODECS - CODECS - CODECS
    ============================================================================================== */
 
-Get_Codecs_Type :: enum c.int {
+Get_Codecs_Type :: enum i32 {
 	Decoder = 0,
 	Encoder = 1,
 	Both    = 2,
@@ -58,22 +57,22 @@ Audio_Service_Type :: enum {
 	Dialogue          = 4,
 	Commentary        = 5,
 	Emergency         = 6,
-	Voice_over        = 7,
+	Voice_Over        = 7,
 	Karaoke           = 8,
 	Not_Part_of_ABI,
 }
 
 RC_Override :: struct {
-	start_frame:    c.int,
-	end_frame:      c.int,
-	qscale:         c.int,
-	quality_factor: c.float,
+	start_frame:    i32,
+	end_frame:      i32,
+	qscale:         i32,
+	quality_factor: f32,
 }
 
 /*
 	`AV_Codec_Flags` can be passed into `AV_Codec_Context.flags` before initialization.
 */
-Codec_Flag :: enum c.int {
+Codec_Flag :: enum i32 {
 	/*
 		FLAG_*
 	*/
@@ -112,36 +111,66 @@ Codec_Flag :: enum c.int {
 	Skip_Manual                  = 29,
 	No_Flush_Loop                = 30,
 }
-Codec_Flags :: bit_set[Codec_Flag; c.int]
+Codec_Flags :: bit_set[Codec_Flag; i32]
 
 /*
 	`Codec_Export_Data_Flags` can be passed into `Codec_Context.export_side_data` before initialization.
 */
-Codec_Export_Data_Flag :: enum c.int {
+Codec_Export_Data_Flag :: enum i32 {
 	Motion_Vectors               = 0,
 	Producer_Reference_Time      = 1,
 	Video_Encoding_Parameters    = 2,
 	Film_Grain                   = 3,
 }
-Codec_Export_Data_Flags :: bit_set[Codec_Export_Data_Flag; c.int]
+Codec_Export_Data_Flags :: bit_set[Codec_Export_Data_Flag; i32]
+
+Codec_HW_Config_Method :: enum i32 {
+	HW_Device_Context = 1,
+	HW_Frame_Context  = 2,
+	Internal          = 4,
+	AdHoc             = 8,
+}
+
+Subtitle_Type :: enum i32 {
+	NONE = 0,
+	Bitmap,    ///< A bitmap, pict will be set
+	/**
+	 * Plain text, the text field must be set by the decoder and is
+	 * authoritative. ass and pict fields may contain approximations.
+	 */
+	Text,
+
+	/**
+	 * Formatted text, the ass field must be set by the decoder and is
+	 * authoritative. pict and text fields may contain approximations.
+	 */
+	ASS,
+}
+
+Picture_Structure :: enum i32 {
+	UNKNOWN = 0,      //< unknown
+	Top_Field,    //< coded as top field
+	Bottom_Field, //< coded as bottom field
+	Frame,        //< coded as frame
+}
 
 /*
 	Pan/Scan area to display
 */
-Vec2_u16 :: [2]c.int16_t
+Vec2_u16 :: [2]u16
 
 Pan_Scan :: struct {
-	id:     c.int,
-	width:  c.int, // Width and Height in 1/16th of a pixel.
-	height: c.int,
+	id:     i32,
+	width:  i32, // Width and Height in 1/16th of a pixel.
+	height: i32,
 
 	position: [3]Vec2_u16, // Top left in 1/16th of a pixel for up to 3 frames.
 }
 
 when #config(API_UNSANITIZED_BITRATES, true) {
-	br_unit :: c.int64_t
+	br_unit :: i64
 } else {
-	br_unit :: c.int
+	br_unit :: i32
 }
 
 /*
@@ -152,16 +181,16 @@ Codec_Bitrate_Properties :: struct {
 	min_bitrate: br_unit,
 	avg_bitrate: br_unit,
 
-	buffer_size: c.int,
-	vbv_delay:   c.uint64_t,
+	buffer_size: i32,
+	vbv_delay:   u64,
 }
 
 /*
 	Producer Reference Time (prft), per ISO/IEC 14496-12.
 */
 Producer_Reference_Time :: struct {
-	wall_clock: c.int64_t, // UTC timestamp in microseconds, e.g. `avcodec.get_time`.
-	flags: c.int,
+	wall_clock: i64, // UTC timestamp in microseconds, e.g. `avcodec.get_time`.
+	flags: i32,
 }
 
 FourCC :: distinct [4]u8
@@ -182,7 +211,7 @@ Codec_Mime :: struct {
 Get_Buffer_Flag_Ref        :: 1 << 0
 Get_Encode_Buffer_Flag_Ref :: 1 << 0
 
-Codec_Capability :: enum c.int {
+Codec_Capability :: enum i32 {
 	Draw_Horizontal_Band     =  0,
 	DR1                      =  1,
 	_Reserved_1              =  2,
@@ -206,14 +235,14 @@ Codec_Capability :: enum c.int {
 	Encoder_Reordered_Opaque = 20,
 	Encoder_Flush            = 21,
 }
-Codec_Capabilities :: bit_set[Codec_Capability; c.int]
+Codec_Capabilities :: bit_set[Codec_Capability; i32]
 
 Profile :: struct {
-	id:                    c.int,
+	id:                    i32,
 	name:                  cstring,
 }
 
-Channel :: enum c.uint64_t {
+Channel :: enum u64 {
 	Front_Left            =  0,
 	Front_Right           =  1,
 	Front_Center          =  2,
@@ -241,8 +270,53 @@ Channel :: enum c.uint64_t {
 	Low_Frequency_2       = 35,
 	Top_Side_Left         = 36,
 	Top_Side_Right        = 37,
+	Bottom_Front_Center   = 38,
+	Bottom_Front_Left     = 39,
+	Bottom_Front_Right    = 40,
+
+	/*
+		`Codec_Context.request_channel_layout` value to indicate that the user requests
+		the channel order of the decoder output to be the native codec channel order.
+	*/
+	Native                = 64,
 }
-Channel_Layout :: bit_set[Channel; c.uint64_t]
+Channel_Layout :: bit_set[Channel; u64]
+
+Layout_Mono              ::                        Channel_Layout{.Front_Center}
+Layout_Stereo            ::                        Channel_Layout{.Front_Left,           .Front_Right}
+Layout_2point1           :: Layout_Stereo        + Channel_Layout{.Low_Frequency}
+Layout_2_1               :: Layout_Stereo        + Channel_Layout{.Back_Center}
+Layout_Surround          :: Layout_Stereo        + Channel_Layout{.Front_Center}
+Layout_3point1           :: Layout_Surround      + Channel_Layout{.Low_Frequency}
+Layout_4point0           :: Layout_Surround      + Channel_Layout{.Back_Center}
+Layout_4point1           :: Layout_4point0       + Channel_Layout{.Low_Frequency}
+Layout_2_2               :: Layout_Stereo        + Channel_Layout{.Side_Left,            .Side_Right}
+Layout_Quad              :: Layout_Stereo        + Channel_Layout{.Back_Left,            .Back_Right}
+Layout_5point0           :: Layout_Surround      + Channel_Layout{.Side_Left,            .Side_Right}
+Layout_5point1           :: Layout_5point0       + Channel_Layout{.Low_Frequency }
+Layout_5point0_Back      :: Layout_Surround      + Channel_Layout{.Back_Left,            .Back_Right}
+Layout_5point1_Back      :: Layout_5point0_Back  + Channel_Layout{.Low_Frequency}
+Layout_6point0           :: Layout_5point0       + Channel_Layout{.Back_Center}
+Layout_6point0_Front     :: Layout_2_2           + Channel_Layout{.Front_Left_of_Center, .Front_Right_of_Center}
+Layout_Hexagonal         :: Layout_5point0_Back  + Channel_Layout{.Back_Center}
+Layout_6point1           :: Layout_5point1       + Channel_Layout{.Back_Center}
+Layout_6point1_Back      :: Layout_5point1_Back  + Channel_Layout{.Back_Center}
+Layout_6point1_Front     :: Layout_6point0_Front + Channel_Layout{.Low_Frequency}
+Layout_7point0           :: Layout_5point0       + Channel_Layout{.Back_Left,            .Back_Right}
+Layout_7point0_Front     :: Layout_5point0       + Channel_Layout{.Front_Left_of_Center, .Front_Right_of_Center}
+Layout_7point1           :: Layout_5point1       + Channel_Layout{.Back_Left,            .Back_Right}
+Layout_7point1_Wide      :: Layout_5point1       + Channel_Layout{.Front_Left_of_Center, .Front_Right_of_Center}
+Layout_7point1_Wide_Back :: Layout_5point1_Back  + Channel_Layout{.Front_Left_of_Center, .Front_Right_of_Center}
+Layout_Octagonal         :: Layout_5point0       + Channel_Layout{.Back_Left,            .Back_Center,           .Back_Right}
+Layout_Hexadecagonal     :: Layout_Octagonal     + Channel_Layout{.Wide_Left,            .Wide_Right,            .Top_Back_Left,
+	                                                              .Top_Back_Right,       .Top_Back_Center,       .Top_Front_Center,
+	                                                              .Top_Front_Left,       .Top_Front_Right}
+Layout_Stereo_Downmix    ::                        Channel_Layout{.Stereo_Left,          .Stereo_Right}
+Layout_22point2          :: Layout_5point1_Back  + Channel_Layout{.Front_Left_of_Center, .Front_Right_of_Center, .Back_Center,      .Low_Frequency_2,
+	                                                              .Side_Left,            .Side_Right,            .Top_Front_Left,   .Top_Front_Right,
+	                                                              .Top_Front_Center,     .Top_Center,            .Top_Back_Left,    .Top_Back_Right,
+	                                                              .Top_Side_Left,        .Top_Side_Right,        .Top_Back_Center,  .Bottom_Front_Center,
+	                                                              .Bottom_Front_Left,    .Bottom_Front_Right}
 
 Codec :: struct {
 	name:                  cstring,
@@ -250,16 +324,16 @@ Codec :: struct {
 	type:                  Media_Type,
 	id:                    Codec_ID,
 	capabilities:          Codec_Capabilities,
-	max_lowres:            c.uint8_t,
+	max_lowres:            u8,
 
-	supported_framerates:  [^]Rational,      // Array of supported framerates,        or NULL if any framerate. Terminated by {0, 0}
-	pixel_formats:         [^]Pixel_Format,  // Array of supported pixel formats,     or NULL if unknown.       Terminated by -1
-	supported_samplerates: [^]c.int,                // Array of supported audio samplerates, or NULL if unknown.       Terminated by 0
-	sample_formats:        [^]Sample_Format, // Array of supported sample formats,    or NULL if unknown.       Terminated by -1
-	channel_layouts:       [^]Channel_Layout,       // Array of supported channel layouts,   or NULL if unknown.       Terminated by 0
+	supported_framerates:  [^]Rational,         // Array of supported framerates,        or NULL if any framerate. Terminated by {0, 0}
+	pixel_formats:         [^]Pixel_Format,     // Array of supported pixel formats,     or NULL if unknown.       Terminated by -1
+	supported_samplerates: [^]i32,              // Array of supported audio samplerates, or NULL if unknown.       Terminated by 0
+	sample_formats:        [^]Sample_Format,    // Array of supported sample formats,    or NULL if unknown.       Terminated by -1
+	channel_layouts:       [^]Channel_Layout,   // Array of supported channel layouts,   or NULL if unknown.       Terminated by 0
 
 	priv_class:            ^Class,
-	profiles:              [^]Profile,              // Array of recognized profiles,         or NULL if unknown.        Terminated by .Profile_Unknown
+	profiles:              [^]Profile,          // Array of recognized profiles,         or NULL if unknown.        Terminated by .Profile_Unknown
 
 	wrapper_name:          cstring,
 }
@@ -278,7 +352,7 @@ Codec :: struct {
 */
 Codec_Context :: struct {
 	av_class:         ^Class,
-	log_level_offset: c.int,
+	log_level_offset: i32,
 
 	codec_type:       Media_Type,
 	codec:            ^Codec,
@@ -2352,23 +2426,7 @@ typedef struct AVPicture {
  */
 #endif
 
-enum AVSubtitleType {
-	SUBTITLE_NONE,
 
-	SUBTITLE_BITMAP,                ///< A bitmap, pict will be set
-
-	/**
-	 * Plain text, the text field must be set by the decoder and is
-	 * authoritative. ass and pict fields may contain approximations.
-	 */
-	SUBTITLE_TEXT,
-
-	/**
-	 * Formatted text, the ass field must be set by the decoder and is
-	 * authoritative. pict and text fields may contain approximations.
-	 */
-	SUBTITLE_ASS,
-};
 
 #define AV_SUBTITLE_FLAG_FORCED 0x00000001
 
@@ -2415,13 +2473,6 @@ typedef struct AVSubtitle {
 	AVSubtitleRect **rects;
 	int64_t pts;    ///< Same as packet pts, in AV_TIME_BASE
 } AVSubtitle;
-
-enum AVPictureStructure {
-	AV_PICTURE_STRUCTURE_UNKNOWN,      //< unknown
-	AV_PICTURE_STRUCTURE_TOP_FIELD,    //< coded as top field
-	AV_PICTURE_STRUCTURE_BOTTOM_FIELD, //< coded as bottom field
-	AV_PICTURE_STRUCTURE_FRAME,        //< coded as frame
-};
 
 typedef struct AVCodecParserContext {
 	void *priv_data;
@@ -2629,7 +2680,7 @@ enum AVLockOp {
 
 */
 
-Codec_Descriptor_Property :: enum c.int {
+Codec_Descriptor_Property :: enum i32 {
 	/**
 	 * Codec uses only intra compression.
 	 * Video and audio codecs only.
@@ -2666,7 +2717,7 @@ Codec_Descriptor_Property :: enum c.int {
 	 */
 	Text_Sub    = 17,
 }
-Codec_Descriptor_Properties :: bit_set[Codec_Descriptor_Property; c.int]
+Codec_Descriptor_Properties :: bit_set[Codec_Descriptor_Property; i32]
 
 Codec_Descriptor :: struct {
 	id:         Codec_ID,
@@ -2703,7 +2754,7 @@ Codec_Descriptor :: struct {
    CODEC IDS - CODEC IDS - CODEC IDS - CODEC IDS - CODEC IDS - CODEC IDS - CODEC IDS - CODEC IDS
    ============================================================================================== */
 
-Codec_ID :: enum c.uint {
+Codec_ID :: enum u32 {
 	NONE = 0x0,
 
 	/* Video Codecs */
@@ -3062,6 +3113,7 @@ Codec_ID :: enum c.uint {
 	ADPCM_IMA_MTF,
 	ADPCM_IMA_CUNNING,
 	ADPCM_IMA_MOFLEX,
+	ADPCM_IMA_ACORN,
 
 	/* AMR */
 	AMR_NB = 0x12000,
@@ -3178,6 +3230,7 @@ Codec_ID :: enum c.uint {
 	SIREN,
 	HCA,
 	FASTAUDIO,
+	MSN_SIREN,
 
 	/* Subtitle Codecs */
 	FIRST_SUBTITLE  = 0x17000, // Dummy ID for start of subtitle codecs.
@@ -3238,7 +3291,7 @@ Codec_ID :: enum c.uint {
 Probe_Data :: struct {
 	filename:  cstring,
 	buf:       [^]u8,
-	buf_size:  c.int,
+	buf_size:  i32,
 	mime_type: cstring,
 }
 
@@ -3252,7 +3305,7 @@ PROBE_PADDING_SIZE       ::  32
 /*
 	Demuxer uses `avio_open`. No file handle should be provided.
 */
-Format_Flag :: enum c.int {
+Format_Flag :: enum i32 {
 	No_File           =  0,
 	Need_Number       =  1,
 	Show_IDs          =  3,
@@ -3271,7 +3324,7 @@ Format_Flag :: enum c.int {
 	TS_Negative       = 18,
 	Seek_to_PTS       = 26,
 }
-Format_Flags :: bit_set[Format_Flag; c.int]
+Format_Flags :: bit_set[Format_Flag; i32]
 
 /*
 	Muxers
@@ -3320,7 +3373,7 @@ Input_Format :: struct {
 	// The rest of the fields are not part of the public API.
 }
 
-Stream_Parse_Type :: enum c.int {
+Stream_Parse_Type :: enum i32 {
 	None,
 	Full,       /**< full parsing and repack */
 	Headers,    /**< Only parse headers, do not repack. */
@@ -3331,24 +3384,24 @@ Stream_Parse_Type :: enum c.int {
 									just codec level data, otherwise position generation would fail */
 }
 
-Index_Flag :: enum c.int {
+Index_Flag :: enum i32 {
 	Keyframe      = 1,
 	Discard_Frame = 2,
 }
 
 Index_Entry :: struct {
-	pos:       c.int64_t,
-	timestamp: c.int64_t, /**< Timestamp in Stream.time_base units, preferably the time from which on correctly decoded frames are available
-							*  when seeking to this entry. That means preferable PTS on keyframe based formats.
-							*  But demuxers can choose to store a different timestamp, if it is more convenient for the implementation or nothing better
-							*  is known
-						  */
+	pos:       i64,
+	timestamp: i64,	/**< Timestamp in Stream.time_base units, preferably the time from which on correctly decoded frames are available
+					  *  when seeking to this entry. That means preferable PTS on keyframe based formats.
+					  *  But demuxers can choose to store a different timestamp, if it is more convenient for the implementation or nothing better
+					  *  is known
+					  */
 
-	flags_and_size: c.int, // Index_Flag in bottom two bits, size in top 30 bits.
-	min_distance:   c.int, /**< Minimum distance between this and the previous keyframe, used to avoid unneeded searching. */
+	flags_and_size: i32, // Index_Flag in bottom two bits, size in top 30 bits.
+	min_distance:   i32, /**< Minimum distance between this and the previous keyframe, used to avoid unneeded searching. */
 }
 
-Disposition_Flag :: enum c.int {
+Disposition_Flag :: enum i32 {
 	Default          = 0,
 	Dub              = 1,
 	Original         = 2,
@@ -3390,18 +3443,18 @@ Disposition_Flag :: enum c.int {
 	Dependent        = 19, ///< dependent audio stream (mix_type=0 in mpegts)
 	Still_Image      = 20, ///< still images in video stream (still_picture_flag=1 in mpegts)
 }
-Disposition_Flags :: bit_set[Disposition_Flag; c.int]
+Disposition_Flags :: bit_set[Disposition_Flag; i32]
 
 /*
 	Options for behavior on timestamp wrap detection.
 */
-Timestamp_Wrap :: enum c.int {
+Timestamp_Wrap :: enum i32 {
 	Ignore     =  0, ///< ignore the wrap
 	Add_offset =  1, ///< add the format specific offset on wrap detection
 	Sub_offset = -1, ///< subtract the format specific offset on wrap detection
 }
 
-Event_Flags :: enum c.int {
+Event_Flags :: enum i32 {
 	/**
 	 * - demuxing: the demuxer read new metadata from the file and updated
 	 *     AVStream.metadata accordingly
@@ -3425,13 +3478,13 @@ Event_Flags :: enum c.int {
  * sizeof(AVStream) must not be used outside libav*.
  */
 Stream :: struct {
-	index: c.int, /**< stream index in Format_Context */
+	index: i32, /**< stream index in Format_Context */
 	/*
 	 * Format-specific stream ID.
 	 * decoding: set by libavformat
 	 * encoding: set by the user, replaced by libavformat if left unset
 	 */
-	id: c.int,
+	id: i32,
 
 	priv_data: rawptr,
 
@@ -3457,7 +3510,7 @@ Stream :: struct {
 	 * @note The ASF header does NOT contain a correct start_time the ASF
 	 * demuxer must NOT set this.
 	 */
-	start_time: c.int64_t,
+	start_time: i64,
 
 	/**
 	 * Decoding: duration of the stream, in stream time base.
@@ -3467,8 +3520,8 @@ Stream :: struct {
 	 * Encoding: May be set by the caller before avformat_write_header() to
 	 * provide a hint to the muxer about the estimated duration.
 	 */
-	duration:    c.int64_t,
-	nb_frames:   c.int64_t,         ///< number of frames in this stream if known or 0
+	duration:    i64,
+	nb_frames:   i64,         ///< number of frames in this stream if known or 0
 	disposition: Disposition_Flags, /**< AV_DISPOSITION_* bit field */
 	discard:     Discard,   ///< Selects which packets can be discarded at will and do not need to be demuxed.
 
@@ -3521,7 +3574,7 @@ Stream :: struct {
 	/**
 	 * The number of elements in the AVStream.side_data array.
 	 */
-	nb_side_data: c.int,
+	nb_side_data: i32,
 
 	/**
 	 * Flags indicating events happening on the stream, a combination of
@@ -3569,7 +3622,7 @@ Stream :: struct {
 	unused: rawptr,
 }
 
-Packet_Flag :: enum c.int {
+Packet_Flag :: enum i32 {
 	Key        = 0, ///< The packet contains a keyframe
 	Corrupt    = 1, ///< The packet content is corrupted
 	/**
@@ -3591,7 +3644,7 @@ Packet_Flag :: enum c.int {
 	 */
 	Disposable = 4,
 }
-Packet_Flags :: bit_set[Packet_Flag; c.int]
+Packet_Flags :: bit_set[Packet_Flag; i32]
 
 Packet :: struct {
 	/**
@@ -3610,17 +3663,17 @@ Packet :: struct {
 	 * the terms dts and pts/cts to mean something different. Such timestamps
 	 * must be converted to true pts/dts before they are stored in AVPacket.
 	 */
-	pts: c.int64_t,
+	pts: i64,
 
 	/**
 	 * Decompression timestamp in AVStream->time_base units; the time at which
 	 * the packet is decompressed.
 	 * Can be AV_NOPTS_VALUE if it is not stored in the file.
 	 */
-	dts: c.int64_t,
+	dts: i64,
 	data: [^]u8,
-	size: c.int,
-	stream_index: c.int,
+	size: i32,
+	stream_index: i32,
 
 	/**
 	 * A combination of FLAG values
@@ -3631,15 +3684,15 @@ Packet :: struct {
 	 * Packet can contain several types of side information.
 	 */
 	side_data: [^]Packet_Side_Data,
-	side_data_elems: c.int,
+	side_data_elems: i32,
 
 	/**
 	 * Duration of this packet in AVStream->time_base units, 0 if unknown.
 	 * Equals next_pts - this_pts in presentation order.
 	 */
-	duration: c.int64_t,
+	duration: i64,
 
-	pos: c.int64_t, ///< byte position in stream, -1 if unknown
+	pos: i64, ///< byte position in stream, -1 if unknown
 }
 
 Packet_List :: struct {
@@ -3647,7 +3700,7 @@ Packet_List :: struct {
 	next: ^Packet_List,
 }
 
-Side_Data_Param_Change_Flags :: enum c.int {
+Side_Data_Param_Change_Flags :: enum i32 {
 	Channel_Count  = 0x0001,
 	Channel_Layout = 0x0002,
 	Sample_Rate    = 0x0004,
@@ -3660,7 +3713,7 @@ Side_Data_Param_Change_Flags :: enum c.int {
  * Types and functions for working with AVPacket.
  * @{
  */
-Packet_Side_Data_Type :: enum c.int {
+Packet_Side_Data_Type :: enum i32 {
 	/**
 	 * An PALETTE side data packet contains exactly AVPALETTE_SIZE
 	 * bytes worth of palette. This side data signals that a new palette is
@@ -3881,7 +3934,7 @@ Packet_Side_Data_Type :: enum c.int {
 	 * Active Format Description data consisting of a single byte as specified
 	 * in ETSI TS 101 154 using AVActiveFormatDescription enum.
 	 */
-	AFD,
+	Active_Format_Description,
 
 	/**
 	 * Producer Reference Time data corresponding to the AVProducerReferenceTime struct,
@@ -3913,6 +3966,7 @@ Packet_Side_Data_Type :: enum c.int {
 	 */
 	S12m_TimeCode,
 
+	Dynamic_HDR_10_Plus,
 	/**
 	 * The number of side data types.
 	 * This is not part of the public API/ABI in the sense that it may
@@ -3926,13 +3980,13 @@ Packet_Side_Data_Type :: enum c.int {
 
 Packet_Side_Data :: struct {
 	data: [^]u8,
-	size: c.int,
+	size: i32,
 	type: Packet_Side_Data_Type,
 }
 
 PROGRAM_RUNNING :: 1
 
-Field_Order :: enum c.int {
+Field_Order :: enum i32 {
 	Unknown,
 	Progressive,
 	TT,          //< Top coded_first, top displayed first
@@ -3974,7 +4028,7 @@ Codec_Parameters :: struct {
 	/**
 	 * Size of the extradata content in bytes.
 	 */
-	extra_data_size:       c.int,
+	extra_data_size:       i32,
 
 	/**
 	 * - video: the  pixel format, the value corresponds to enum `Pixel_Format`.
@@ -3988,7 +4042,7 @@ Codec_Parameters :: struct {
 	/**
 	 * The average bitrate of the encoded data (in bits per second).
 	 */
-	bit_rate:              c.int64_t,
+	bit_rate:              i64,
 
 	/**
 	 * The number of bits per sample in the codedwords.
@@ -4001,7 +4055,7 @@ Codec_Parameters :: struct {
 	 * For PCM formats this matches bits_per_raw_sample
 	 * Can be 0
 	 */
-	bits_per_coded_sample: c.int,
+	bits_per_coded_sample: i32,
 
 	/**
 	 * This is the number of valid bits in each output sample. If the
@@ -4014,19 +4068,19 @@ Codec_Parameters :: struct {
 	 * For ADPCM this might be 12 or 16 or similar
 	 * Can be 0
 	 */
-	bits_per_raw_sample:   c.int,
+	bits_per_raw_sample:   i32,
 
 	/**
 	 * Codec-specific bitstream restrictions that the stream conforms to.
 	 */
-	profile:               c.int,
-	level:                 c.int,
+	profile:               i32,
+	level:                 i32,
 
 	/**
 	 * Video only. The dimensions of the video frame in pixels.
 	 */
-	width:                 c.int,
-	height:                c.int,
+	width:                 i32,
+	height:                i32,
 
 	/**
 	 * Video only. The aspect ratio (width / height) which a single pixel
@@ -4055,33 +4109,33 @@ Codec_Parameters :: struct {
 	/**
 	 * Video only. Number of delayed frames.
 	 */
-	video_delay:           c.int,
+	video_delay:           i32,
 
 	/**
 	 * Audio only. The channel layout bitmask. May be 0 if the channel layout is
 	 * unknown or unspecified, otherwise the number of bits set must be equal to
 	 * the channels field.
 	 */
-	channel_layout:        c.uint64_t,
+	channel_layout:        u64,
 	/**
 	 * Audio only. The number of audio channels.
 	 */
-	channels:              c.int,
+	channels:              i32,
 	/**
 	 * Audio only. The number of audio samples per second.
 	 */
-	sample_rate:           c.int,
+	sample_rate:           i32,
 	/**
 	 * Audio only. The number of bytes per coded audio frame, required by some
 	 * formats.
 	 *
 	 * Corresponds to nBlockAlign in WAVEFORMATEX.
 	 */
-	block_align:           c.int,
+	block_align:           i32,
 	/**
 	 * Audio only. Audio frame size, if known. Required by some formats to be static.
 	 */
-	frame_size:            c.int,
+	frame_size:            i32,
 
 	/**
 	 * Audio only. The amount of padding (in samples) inserted by the encoder at
@@ -4089,18 +4143,18 @@ Codec_Parameters :: struct {
 	 * must be discarded by the caller to get the original audio without leading
 	 * padding.
 	 */
-	initial_padding:       c.int,
+	initial_padding:       i32,
 	/**
 	 * Audio only. The amount of padding (in samples) appended by the encoder to
 	 * the end of the audio. I.e. this number of decoded samples must be
 	 * discarded by the caller from the end of the stream to get the original
 	 * audio without any trailing padding.
 	 */
-	trailing_padding:      c.int,
+	trailing_padding:      i32,
 	/**
 	 * Audio only. Number of samples to skip after a discontinuity.
 	 */
-	seek_preroll:          c.int,
+	seek_preroll:          i32,
 }
 
 /*
@@ -4824,7 +4878,7 @@ STREAM_INIT_IN_WRITE_HEADER   :: 0 ///< stream parameters initialized in avforma
 STREAM_INIT_IN_INIT_OUTPUT    :: 1 ///< stream parameters initialized in avformat_init_output
 FRAME_FILENAME_FLAGS_MULTIPLE :: 1 ///< Allow multiple %d
 
-Timebase_Source :: enum c.int {
+Timebase_Source :: enum i32 {
 	AUTO = -1,
 	DECODER,
 	DEMUXER,
@@ -4835,12 +4889,21 @@ Timebase_Source :: enum c.int {
       UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL
    ============================================================================================== */
 
-Rational :: struct {
-	numerator:   c.int,
-	denominator: c.int,
+Rounding :: enum i32 {
+	Zero          =    0,
+	Infinity      =    1,
+	Down          =    2,
+	Up            =    3,
+	Near_Infinity =    5,
+	Pass_Min_Max  = 8192,
 }
 
-Media_Type :: enum c.int {
+Rational :: struct {
+	numerator:   i32,
+	denominator: i32,
+}
+
+Media_Type :: enum i32 {
 	Unknown = -1,
 	Video,
 	Audio,
@@ -4850,8 +4913,8 @@ Media_Type :: enum c.int {
 	Not_Part_of_ABI,
 }
 
-Class_Category :: enum c.int {
-	None = 0,
+Class_Category :: enum i32 {
+	NONE = 0,
 	Input,
 	Output,
 	Muxer,
@@ -4871,7 +4934,7 @@ Class_Category :: enum c.int {
 	Not_Part_of_ABI,
 }
 
-Option_Type :: enum c.int {
+Option_Type :: enum i32 {
 	Flags,
 	Int,
 	Int64,
@@ -4893,7 +4956,7 @@ Option_Type :: enum c.int {
 	Bool,
 }
 
-Option_Flag :: enum c.int {
+Option_Flag :: enum i32 {
 	Encoding_Param  =  0,
 	Decoding_Param  =  1,
 	Audio_Param     =  3,
@@ -4907,22 +4970,22 @@ Option_Flag :: enum c.int {
 	Deprecated      = 17,
 	Child_Constants = 18,
 }
-Option_Flags :: bit_set[Option_Flag; c.int]
+Option_Flags :: bit_set[Option_Flag; i32]
 
 Option :: struct {
 	name: cstring,
 	help: cstring,
 
-	option_offset: c.int,
+	option_offset: i32,
 	type: Option_Type,
 	default_val: struct #raw_union {
-		int_64: c.int64_t,
-		dbl:    c.double,
+		int_64: i64,
+		dbl:    f64,
 		str:    cstring,
 		q: Rational,
 	},
-	min: c.double,
-	max: c.double,
+	min: f64,
+	max: f64,
 
 	flags: Option_Flags,
 
@@ -4934,35 +4997,35 @@ Class :: struct {
 	item_name:                 proc(ctx: rawptr) -> cstring,
 
 	option:                    ^Option,
-	av_util_verion:            c.int,
+	av_util_verion:            i32,
 
-	log_level_offset_offset:   c.int,
-	parent_log_context_offset: c.int,
+	log_level_offset_offset:   i32,
+	parent_log_context_offset: i32,
 
 	next_child:                proc(obj: rawptr, prev: rawptr) -> rawptr,
 	child_class_next:          proc(prev: ^Class) -> (next: ^Class),
 	category:                  Class_Category,
 	get_category:              proc(ctx: rawptr) -> (category: Class_Category),
-	query_ranges:              proc(ranges: ^[^]Option_Ranges, obj: rawptr, key: cstring, flags: Option_Flags) -> c.int,
+	query_ranges:              proc(ranges: ^[^]Option_Ranges, obj: rawptr, key: cstring, flags: Option_Flags) -> i32,
 	child_class_iterate:       proc(iter: ^rawptr) -> ^Class,
 }
 
 Option_Range :: struct {
 	str:           cstring,
-	value_min:     c.double,
-	value_max:     c.double,
-	component_min: c.double,
-	component_max: c.double,
-	is_range:      c.int,
+	value_min:     f64,
+	value_max:     f64,
+	component_min: f64,
+	component_max: f64,
+	is_range:      i32,
 }
 
 Option_Ranges :: struct {
 	range:           ^[^]Option_Range,
-	ranges_count:    c.int,
-	component_count: c.int,
+	ranges_count:    i32,
+	component_count: i32,
 }
 
-Log_Level :: enum c.int {
+Log_Level :: enum i32 {
 	QUIET      = -8,
 	PANIC      =  0,
 	FATAL      =  8,
@@ -4986,7 +5049,7 @@ TIME_BASE        :: 1000000
 
 TIME_BASE_Q      :: Rational{1, TIME_BASE}
 
-Picture_Type :: enum c.int {
+Picture_Type :: enum i32 {
 	NONE = 0,
 	I,  // Intra
 	P,  // Predicted
@@ -4999,27 +5062,27 @@ Picture_Type :: enum c.int {
 
 FOURCC_MAX_STRING_SIZE :: 32
 
-Opt_Flag :: enum c.int {
+Opt_Flag :: enum i32 {
 	None                  =  0,
 	Implicit_Key          =  1,
 	Opt_Allow_Null        =  2,
 	Multi_Component_Range = 12,
 }
-Opt_Flags :: bit_set[Opt_Flag; c.int]
+Opt_Flags :: bit_set[Opt_Flag; i32]
 
-Opt_Search_Flag :: enum c.int {
+Opt_Search_Flag :: enum i32 {
 	Children    = 0,
 	Fake_Object = 1,
 }
-Opt_Search_Flags :: bit_set[Opt_Search_Flag; c.int]
+Opt_Search_Flags :: bit_set[Opt_Search_Flag; i32]
 
-Opt_Serialize_Flag :: enum c.int {
+Opt_Serialize_Flag :: enum i32 {
 	Skip_Defaults   = 0,
 	Opt_Flags_Exact = 1,
 }
-Opt_Serialize_Flags :: bit_set[Opt_Serialize_Flag; c.int]
+Opt_Serialize_Flags :: bit_set[Opt_Serialize_Flag; i32]
 
-Sample_Format :: enum c.int {
+Sample_Format :: enum i32 {
 	NONE = -1,
 	U8,              ///< unsigned 8 bits
 	S16,             ///< signed 16 bits
@@ -5071,7 +5134,7 @@ PALETTE_COUNT :: 256
  * for pal8. This palette is filled in automatically by the function
  * allocating the picture.
  */
-Pixel_Format :: enum c.int {
+Pixel_Format :: enum i32 {
 	NONE = -1,
 	YUV420P,     ///< planar YUV 4:2:0, 12bpp, (1 Cr & Cb sample per 2x2 Y samples)
 	YUYV422,     ///< packed YUV 4:2:2, 16bpp, Y0 Cb Y1 Cr
@@ -5122,10 +5185,7 @@ Pixel_Format :: enum c.int {
 	BGR555BE,    ///< packed BGR 5:5:5, 16bpp, (msb)1X 5B 5G 5R(lsb), big-endian   , X=unused/undefined
 	BGR555LE,    ///< packed BGR 5:5:5, 16bpp, (msb)1X 5B 5G 5R(lsb), little-endian, X=unused/undefined
 
-	VAAPI_MOCO,  ///< HW acceleration through VA API at motion compensation entry-point, Picture.data[3] contains a vaapi_render_state struct which contains macroblocks as well as various fields extracted from headers
-	VAAPI_IDCT,  ///< HW acceleration through VA API at IDCT entry-point, Picture.data[3] contains a vaapi_render_state struct which contains fields extracted from headers
-	VAAPI_VLD,   ///< HW decoding through VA API, Picture.data[3] contains a VASurfaceID
-	VAAPI = VAAPI_VLD,
+	VAAPI,       ///< HW acceleration through VA API
 
 	YUV420P16LE, ///< planar YUV 4:2:0, 24bpp, (1 Cr & Cb sample per 2x2 Y samples), little-endian
 	YUV420P16BE, ///< planar YUV 4:2:0, 24bpp, (1 Cr & Cb sample per 2x2 Y samples), big-endian
@@ -5133,14 +5193,15 @@ Pixel_Format :: enum c.int {
 	YUV422P16BE, ///< planar YUV 4:2:2, 32bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
 	YUV444P16LE, ///< planar YUV 4:4:4, 48bpp, (1 Cr & Cb sample per 1x1 Y samples), little-endian
 	YUV444P16BE, ///< planar YUV 4:4:4, 48bpp, (1 Cr & Cb sample per 1x1 Y samples), big-endian
+
 	DXVA2_VLD,   ///< HW decoding through DXVA2, Picture.data[3] contains a LPDIRECT3DSURFACE9 pointer
 
 	RGB444LE,    ///< packed RGB 4:4:4, 16bpp, (msb)4X 4R 4G 4B(lsb), little-endian, X=unused/undefined
 	RGB444BE,    ///< packed RGB 4:4:4, 16bpp, (msb)4X 4R 4G 4B(lsb), big-endian,    X=unused/undefined
 	BGR444LE,    ///< packed BGR 4:4:4, 16bpp, (msb)4X 4B 4G 4R(lsb), little-endian, X=unused/undefined
 	BGR444BE,    ///< packed BGR 4:4:4, 16bpp, (msb)4X 4B 4G 4R(lsb), big-endian,    X=unused/undefined
-	YA8,         ///< 8 bits gray, 8 bits alpha
 
+	YA8,         ///< 8 bits gray, 8 bits alpha
 	Y400A = YA8, ///< alias for YA8
 	GRAY8A= YA8, ///< alias for YA8
 
@@ -5164,6 +5225,7 @@ Pixel_Format :: enum c.int {
 	YUV444P10LE,  ///< planar YUV 4:4:4, 30bpp, (1 Cr & Cb sample per 1x1 Y samples), little-endian
 	YUV422P9BE,   ///< planar YUV 4:2:2, 18bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
 	YUV422P9LE,   ///< planar YUV 4:2:2, 18bpp, (1 Cr & Cb sample per 2x1 Y samples), little-endian
+
 	GBRP,         ///< planar GBR 4:4:4 24bpp
 	GBR24P = GBRP, // alias for #GBRP
 	GBRP9BE,      ///< planar GBR 4:4:4 27bpp, big-endian
@@ -5172,6 +5234,7 @@ Pixel_Format :: enum c.int {
 	GBRP10LE,     ///< planar GBR 4:4:4 30bpp, little-endian
 	GBRP16BE,     ///< planar GBR 4:4:4 48bpp, big-endian
 	GBRP16LE,     ///< planar GBR 4:4:4 48bpp, little-endian
+
 	YUVA422P,     ///< planar YUV 4:2:2 24bpp, (1 Cr & Cb sample per 2x1 Y & A samples)
 	YUVA444P,     ///< planar YUV 4:4:4 32bpp, (1 Cr & Cb sample per 1x1 Y & A samples)
 	YUVA420P9BE,  ///< planar YUV 4:2:0 22.5bpp, (1 Cr & Cb sample per 2x2 Y & A samples), big-endian
@@ -5197,6 +5260,7 @@ Pixel_Format :: enum c.int {
 
 	XYZ12LE,      ///< packed XYZ 4:4:4, 36 bpp, (msb) 12X, 12Y, 12Z (lsb), the 2-byte value for each X/Y/Z is stored as little-endian, the 4 lower bits are set to 0
 	XYZ12BE,      ///< packed XYZ 4:4:4, 36 bpp, (msb) 12X, 12Y, 12Z (lsb), the 2-byte value for each X/Y/Z is stored as big-endian, the 4 lower bits are set to 0
+
 	NV16,         ///< interleaved chroma YUV 4:2:2, 16bpp, (1 Cr & Cb sample per 2x1 Y samples)
 	NV20LE,       ///< interleaved chroma YUV 4:2:2, 20bpp, (1 Cr & Cb sample per 2x1 Y samples), little-endian
 	NV20BE,       ///< interleaved chroma YUV 4:2:2, 20bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
@@ -5250,6 +5314,7 @@ Pixel_Format :: enum c.int {
 	YUV444P12LE, ///< planar YUV 4:4:4,36bpp, (1 Cr & Cb sample per 1x1 Y samples), little-endian
 	YUV444P14BE, ///< planar YUV 4:4:4,42bpp, (1 Cr & Cb sample per 1x1 Y samples), big-endian
 	YUV444P14LE, ///< planar YUV 4:4:4,42bpp, (1 Cr & Cb sample per 1x1 Y samples), little-endian
+
 	GBRP12BE,    ///< planar GBR 4:4:4 36bpp, big-endian
 	GBRP12LE,    ///< planar GBR 4:4:4 36bpp, little-endian
 	GBRP14BE,    ///< planar GBR 4:4:4 42bpp, big-endian
@@ -5285,7 +5350,6 @@ Pixel_Format :: enum c.int {
 
 	GBRAP12BE,  ///< planar GBR 4:4:4:4 48bpp, big-endian
 	GBRAP12LE,  ///< planar GBR 4:4:4:4 48bpp, little-endian
-
 	GBRAP10BE,  ///< planar GBR 4:4:4:4 40bpp, big-endian
 	GBRAP10LE,  ///< planar GBR 4:4:4:4 40bpp, little-endian
 
@@ -5358,7 +5422,9 @@ Pixel_Format :: enum c.int {
 	Y210LE,    ///< packed YUV 4:2:2 like YUYV422, 20bpp, data in the high bits, little-endian
 
 	X2RGB10LE, ///< packed RGB 10:10:10, 30bpp, (msb)2X 10R 10G 10B(lsb), little-endian, X=unused/undefined
-	X2RGB10BE, ///< packed RGB 10:10:10, 30bpp, (msb)2X 10R 10G 10B(lsb), big-endian, X=unused/undefined
+	X2RGB10BE, ///< packed RGB 10:10:10, 30bpp, (msb)2X 10R 10G 10B(lsb), big-endian,    X=unused/undefined
+	X2BGR10LE,
+	X2BGR10BE,
 	Not_Part_of_ABI, ///< number of pixel formats, DO NOT USE THIS if you want to link with shared libav* because the number of formats might differ between versions
 }
 
@@ -5530,7 +5596,7 @@ when ODIN_ENDIAN == "little" {
   * Chromaticity coordinates of the source primaries.
   * These values match the ones defined by ISO/IEC 23001-8_2013 § 7.1.
   */
-Color_Primaries :: enum c.int {
+Color_Primaries :: enum i32 {
 	RESERVED0          = 0,
 	BT709              = 1,  ///< also ITU-R BT1361 / IEC 61966-2-4 / SMPTE RP177 Annex B
 	UNSPECIFIED        = 2,
@@ -5554,7 +5620,7 @@ Color_Primaries :: enum c.int {
  * Color Transfer Characteristic.
  * These values match the ones defined by ISO/IEC 23001-8_2013 § 7.2.
  */
-Color_Transfer_Characteristic :: enum c.int {
+Color_Transfer_Characteristic :: enum i32 {
 	RESERVED0          = 0,
 	BT709              = 1,  ///< also ITU-R BT1361
 	UNSPECIFIED        = 2,
@@ -5583,7 +5649,7 @@ Color_Transfer_Characteristic :: enum c.int {
  * YUV colorspace type.
  * These values match the ones defined by ISO/IEC 23001-8_2013 § 7.3.
  */
-Color_Space :: enum c.int {
+Color_Space :: enum i32 {
 	RGB                = 0,  ///< order of coefficients is actually GBR, also IEC 61966-2-1 (sRGB)
 	BT709              = 1,  ///< also ITU-R BT1361 / IEC 61966-2-4 xvYCC709 / SMPTE RP177 Annex B
 	UNSPECIFIED        = 2,
@@ -5622,7 +5688,7 @@ Color_Space :: enum c.int {
  *   - For additional definitions such as rounding and clipping to valid n
  *     bit unsigned integer range, please refer to BT.2100 (Table 9).
  */
-Color_Range :: enum c.int {
+Color_Range :: enum i32 {
 	Unspecified        = 0,
 
 	/**
@@ -5676,7 +5742,7 @@ Color_Range :: enum c.int {
  *                |             |1 2           1-6 are possible chroma positions
  *2nd luma line > |X   X ...    |5 6 X ...     0 is undefined/unknown position
  */
-Chroma_Location :: enum c.int {
+Chroma_Location :: enum i32 {
 	Unspecified   = 0,
 	Left          = 1, ///< MPEG-2/4 4:2:0, H.264 default for 4:2:0
 	Center        = 2, ///< MPEG-1 4:2:0, JPEG 4:2:0, H.263 4:2:0
@@ -5686,3 +5752,69 @@ Chroma_Location :: enum c.int {
 	Bottom        = 6,
 	Not_Part_of_ABI,   ///< Not part of ABI
 }
+
+Frame_Side_Data_Type :: enum i32 {
+	Pan_Scan,
+	A53Cc,
+	Stereo_3D,
+	Matrix_Encoding,
+	Downmix_Info,
+	Replay_Gain,
+	Display_Matrix,
+	Active_Format_Description,
+	Motion_Vectors,
+	Skip_Samples,
+	Audio_Service_Type,
+	Mastering_Display_Metadata,
+	GOP_Timecode,
+	Spherical,
+	Content_Light_Level,
+	ICC_Profile,
+	S12M_Timecode,
+	Dynamic_HDR_Plus,
+	Regions_of_Interest,
+	Video_Enc_Params,
+	Sei_Unregistered,
+	Film_Grain_Params,
+	Detection_Bboxes,
+}
+
+Active_Format_Description :: enum i32 {
+	Same            =  8,
+	AR_4_3          =  9,
+	AR_16_9         = 10,
+	AR_14_9         = 11,
+	AR_4_3_SP_14_9  = 13,
+	AR_16_9_SP_14_9 = 14,
+	AR_SP_4_3       = 15,
+}
+
+FRAME_CROP_UNALIGNED :: 1
+
+HW_Device_Type :: enum i32 {
+	None,
+	VDPAU,
+	CUDA,
+	VAAPI,
+	DXVA2,
+	QSV,
+	VideoToolbox,
+	D3D11Va,
+	DRM,
+	OpenCL,
+	Media_Codec,
+	Vulkan,
+}
+
+HW_Frame_Transfer_Direction :: enum i32 {
+	From,
+	To,
+}
+
+HW_Frame_Mapping :: enum i32 {
+	Read      = 1,
+	Write     = 2,
+	Overwrite = 4,
+	Direct    = 8,
+}
+

@@ -450,7 +450,6 @@ example :: proc() {
 	case:
 		do_default()
 		print_usage()
-		show_muxers()
 	}
 }
 
