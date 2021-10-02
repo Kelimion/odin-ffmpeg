@@ -347,7 +347,7 @@ show_codecs :: proc() {
 	printf("\n%v codecs found.\n", i)
 }
 
-enumerate_muxers :: proc() {
+show_muxers :: proc() {
 	using fmt
 
 	println("\nAvailable muxers:")
@@ -377,7 +377,7 @@ enumerate_muxers :: proc() {
 	}
 }
 
-enumerate_demuxers :: proc() {
+show_demuxers :: proc() {
 	using fmt
 
 	println("\nAvailable demuxers:")
@@ -444,13 +444,13 @@ example :: proc() {
 		} else {
 			show_codecs()
 		}
-	case "-muxers":   enumerate_muxers()
-	case "-demuxers": enumerate_demuxers()
+	case "-muxers":   show_muxers()
+	case "-demuxers": show_demuxers()
 	case "-h":        fallthrough
 	case:
 		do_default()
 		print_usage()
-		show_codecs_alt()
+		show_muxers()
 	}
 }
 
