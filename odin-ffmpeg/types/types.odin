@@ -3667,6 +3667,9 @@ Format_Control_Message :: #type proc(ctx: Format_Context, type: i32, data: [^]u8
  * The Option/command line parameter names differ in some cases from the C
  * structure field names for historic reasons or brevity.
  */
+
+Format_Internal :: struct {}
+
 Format_Context :: struct {
 	/**
 	 * A class for logging and @ref avoptions. Set by avformat.alloc_context().
@@ -4075,7 +4078,7 @@ Format_Context :: struct {
 	 * An opaque field for libavformat internal usage.
 	 * Must not be accessed in any way by callers.
 	 */
-	internal:                        rawptr, // Format_Internal
+	internal:                        ^Format_Internal,
 
 	/**
 	 * IO repositioned flag.
@@ -4498,7 +4501,7 @@ Packet :: struct {
 	 * stored.
 	 * May be NULL, then the packet data is not reference-counted.
 	 */
-	buf:             rawptr, // BufferRef *buf
+	buf:             ^Buffer_Ref,
 
 	/**
 	 * Presentation timestamp in AVStream->time_base units the time at which
@@ -6722,28 +6725,26 @@ Input_Stream :: struct {
 	samples_decoded:              u64,
 	dts_buffer:                   ^i64,
 	nb_dts_buffer:                i32,
-	got_output:                   i32,
+	got_output:                   b32,
 }
 
-// TODO(Jeroen): Replace placeholder rawptrs with proper struct pointers.
-
 Input_Filter :: struct {
-	filter:                       rawptr, // ^Filter_Context,
-	ist: ^Input_Stream,
-	graph:                        rawptr, // ^Filter_Graph,
-	name: ^u8,
-	type: Media_Type,
-	frame_queue : ^FIFO_Buffer,
-	format : i32,
-	width : i32,
-	height : i32,
-	sample_aspect_ratio: Rational,
-	sample_rate : i32,
-	channels : i32,
-	channel_layout : u64,
-	hw_frames_ctx : ^Buffer_Ref,
-	displaymatrix : ^i32,
-	eof : i32,
+	filter:                       ^Filter_Context,
+	ist:                          ^Input_Stream,
+	graph:                        ^Filter_Graph,
+	name:                         cstring,
+	type:                         Media_Type,
+	frame_queue:                  ^FIFO_Buffer,
+	format:                       i32,
+	width:                        i32,
+	height:                       i32,
+	sample_aspect_ratio:          Rational,
+	sample_rate:                  i32,
+	channels:                     i32,
+	channel_layout:               u64,
+	hw_frames_ctx:                ^Buffer_Ref,
+	displaymatrix:                ^i32,
+	eof:                          b32,
 }
 
 FilterGraph :: struct {
@@ -6757,9 +6758,6 @@ FilterGraph :: struct {
 	nb_outputs:      i32,
 }
 
-
-
-
 OutputFile :: struct {
 	ctx:                ^Format_Context,
 	opts:               ^Dictionary,
@@ -6772,6 +6770,30 @@ OutputFile :: struct {
 }
 
 File :: distinct u64
+
+Expr_Type :: enum i32 {
+	e_value, e_const, e_func0, e_func1, e_func2,
+	e_squish, e_gauss, e_ld, e_isnan, e_isinf,
+	e_mod, e_max, e_min, e_eq, e_gt, e_gte, e_lte, e_lt,
+	e_pow, e_mul, e_div, e_add,
+	e_last, e_st, e_while, e_taylor, e_root, e_floor, e_ceil, e_trunc, e_round,
+	e_sqrt, e_not, e_random, e_hypot, e_gcd,
+	e_if, e_ifnot, e_print, e_bitand, e_bitor, e_between, e_clip, e_atan2, e_lerp,
+	e_sgn,
+}
+
+Expr :: struct {
+	type:        Expr_Type,
+	value:       f64, // is sign in other types
+	const_index: i32,
+	a: struct #raw_union {
+		func0: #type proc(v: f64) -> f64,
+		func1: #type proc(p: rawptr, v: f64) -> f64,
+		func2: #type proc(p: rawptr, v1: f64, v2: f64) -> f64,
+	},
+	param: ^[3]Expr,
+	var:   ^f64,
+}
 
 Output_Stream :: struct {
 	file_index:                         i32,
@@ -6811,7 +6833,7 @@ Output_Stream :: struct {
 	forced_kf_count:                    i32,
 	forced_kf_index:                    i32,
 	forced_keyframes:                   cstring,
-	forced_keyframes_pexpr:             rawptr, // ^Expr,
+	forced_keyframes_pexpr:             ^Expr,
 	forced_keyframes_expr_const_values: [5]f64,
 	dropped_keyframe:                   i32,
 	audio_channels_map:                 ^i32,
