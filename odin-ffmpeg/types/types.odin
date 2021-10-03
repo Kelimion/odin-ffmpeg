@@ -127,6 +127,12 @@ Codec_Export_Data_Flag :: enum i32 {
 }
 Codec_Export_Data_Flags :: bit_set[Codec_Export_Data_Flag; i32]
 
+Codec_Hardware_Config :: struct {
+	pix_fmt:     Pixel_Format,
+	methods:     i32,
+	device_type: Hardware_Device_Type,
+}
+
 Codec_HW_Config_Method :: enum i32 {
 	HW_Device_Context = 1,
 	HW_Frame_Context  = 2,
@@ -170,21 +176,14 @@ Pan_Scan :: struct {
 	position: [3]Vec2_u16, // Top left in 1/16th of a pixel for up to 3 frames.
 }
 
-when #config(API_UNSANITIZED_BITRATES, true) {
-	br_unit :: i64
-} else {
-	br_unit :: i32
-}
-
 /*
 	Stream bitrate properties.
 */
 Codec_Bitrate_Properties :: struct {
-	max_bitrate: br_unit,
-	min_bitrate: br_unit,
-	avg_bitrate: br_unit,
-
-	buffer_size: i32,
+	max_bitrate: i64,
+	min_bitrate: i64,
+	avg_bitrate: i64,
+	buffer_size: i64,
 	vbv_delay:   u64,
 }
 
@@ -193,7 +192,7 @@ Codec_Bitrate_Properties :: struct {
 */
 Producer_Reference_Time :: struct {
 	wall_clock: i64, // UTC timestamp in microseconds, e.g. `avcodec.get_time`.
-	flags: i32,
+	flags:      i32,
 }
 
 FourCC :: distinct [4]u8
@@ -321,25 +320,50 @@ Layout_22point2          :: Layout_5point1_Back  + Channel_Layout{.Front_Left_of
 																  .Top_Side_Left,        .Top_Side_Right,        .Top_Back_Center,  .Bottom_Front_Center,
 																  .Bottom_Front_Left,    .Bottom_Front_Right}
 
+Codec_HW_Config_Internal :: struct {}
+
 Codec :: struct {
-	name:                  cstring,
-	long_name:             cstring,
-	type:                  Media_Type,
-	id:                    Codec_ID,
-	capabilities:          Codec_Capabilities,
-	max_lowres:            u8,
+	name:                           cstring,
+	long_name:                      cstring,
+	type:                           Media_Type,
+	id:                             Codec_ID,
+	capabilities:                   Codec_Capabilities,
+	max_lowres:                     u8,
 
-	supported_framerates:  [^]Rational,         // Array of supported framerates,        or NULL if any framerate. Terminated by {0, 0}
-	pixel_formats:         [^]Pixel_Format,     // Array of supported pixel formats,     or NULL if unknown.       Terminated by -1
-	supported_samplerates: [^]i32,              // Array of supported audio samplerates, or NULL if unknown.       Terminated by 0
-	sample_formats:        [^]Sample_Format,    // Array of supported sample formats,    or NULL if unknown.       Terminated by -1
-	channel_layouts:       [^]Channel_Layout,   // Array of supported channel layouts,   or NULL if unknown.       Terminated by 0
+	supported_framerates:           [^]Rational,         // Array of supported framerates,        or NULL if any framerate. Terminated by {0, 0}
+	pixel_formats:                  [^]Pixel_Format,     // Array of supported pixel formats,     or NULL if unknown.       Terminated by -1
+	supported_samplerates:          [^]i32,              // Array of supported audio samplerates, or NULL if unknown.       Terminated by 0
+	sample_formats:                 [^]Sample_Format,    // Array of supported sample formats,    or NULL if unknown.       Terminated by -1
+	channel_layouts:                [^]Channel_Layout,   // Array of supported channel layouts,   or NULL if unknown.       Terminated by 0
+	priv_class:                     ^Class,
+	profiles:                       [^]Profile,          // Array of recognized profiles,         or NULL if unknown.        Terminated by .Profile_Unknown
 
-	priv_class:            ^Class,
-	profiles:              [^]Profile,          // Array of recognized profiles,         or NULL if unknown.        Terminated by .Profile_Unknown
+	wrapper_name:                   cstring,
 
-	wrapper_name:          cstring,
+	caps_internal:                  i32,
+	priv_data_size:                 i32,
+
+	update_thread_context:          #type proc(dst: ^Codec_Context, src: ^Codec_Context) -> i32,
+	update_thread_context_for_user: #type proc(dst: ^Codec_Context,	src: ^Codec_Context) -> i32,
+
+	defaults:                       ^Codec_Default,
+
+	init_static_data:               #type proc(codec: ^Codec),
+	init:                           #type proc(ctx:   ^Codec_Context) -> i32,
+	encode_sub:                     #type proc(ctx:   ^Codec_Context, buf: [^]u8,   buf_size: i32, sub: ^Subtitle) -> i32,
+	encode2:                        #type proc(ctx:   ^Codec_Context, pkt: ^Packet, frame: ^Frame, got_packet_ptr: ^i32) -> i32,
+	decode:                         #type proc(ctx:   ^Codec_Context, outdata: rawptr, got_frame_ptr: ^i32, pkt: ^Packet) -> i32,
+	close:                          #type proc(ctx:   ^Codec_Context) -> i32,
+	receive_packet:                 #type proc(ctx:   ^Codec_Context, pkt: ^Packet) -> i32,
+	receive_frame:                  #type proc(ctx:   ^Codec_Context, frame: ^Frame) -> i32,
+	flush:                          #type proc(ctx:   ^Codec_Context),
+
+	bsfs:                           cstring,
+	hw_configs:                     ^[^]Codec_HW_Config_Internal,
+	codec_tags:                     ^u32,
 }
+
+Codec_Default :: struct {}
 
 /*
 	main external API structure.
@@ -610,8 +634,34 @@ Stream_Property_Flag :: enum i32 {
 Stream_Property_Flags :: bit_set[Stream_Property_Flag; i32]
 
 Hardware_Accelerator_Flag :: enum i32 {
+	/**
+	 * Hardware acceleration should be used for decoding even if the codec level
+	 * used is unknown or higher than the maximum supported level reported by the
+	 * hardware driver.
+	 *
+	 * It's generally a good idea to pass this flag unless you have a specific
+	 * reason not to, as hardware tends to under-report supported levels.
+	 */
 	Ignore_Level           = 0,
+
+	/**
+	 * Hardware acceleration can output YUV pixel formats with a different chroma
+	 * sampling than 4:2:0 and/or other than 8 bits per component.
+	 */
 	Allow_High_Depth       = 1,
+
+	/**
+	 * Hardware acceleration should still be attempted for decoding when the
+	 * codec profile does not match the reported capabilities of the hardware.
+	 *
+	 * For example, this can be used to try to decode baseline profile H.264
+	 * streams in hardware - it will often succeed, because many streams marked
+	 * as baseline profile actually conform to constrained baseline profile.
+	 *
+	 * @warning If the stream is actually not supported then the behaviour is
+	 *          undefined, and may include returning entirely incorrect output
+	 *          while indicating success.
+	 */
 	Allow_Profile_Mismatch = 2,
 }
 Hardware_Accelerator_Flags :: bit_set[Hardware_Accelerator_Flag; i32]
@@ -1997,286 +2047,47 @@ Codec_Context :: struct {
  *
  * @{
  */
-
 Hardware_Accelerator :: struct{}
 
-/*
-typedef struct AVHWAccel {
-	/**
-	 * Name of the hardware accelerated codec.
-	 * The name is globally unique among encoders and among decoders (but an
-	 * encoder and a decoder can share the same name).
-	 */
-	const char *name;
+Subtitle_Flag_Forced :: 0x00000001
 
-	/**
-	 * Type of codec implemented by the hardware accelerator.
-	 *
-	 * See AVMEDIA_TYPE_xxx
-	 */
-	enum AVMediaType type;
+Subtitle_Rect :: struct {
+	x        : i32, ///< top left corner  of pict, undefined when pict is not set
+	y        : i32, ///< top left corner  of pict, undefined when pict is not set
+	w        : i32, ///< width            of pict, undefined when pict is not set
+	h        : i32, ///< height           of pict, undefined when pict is not set
+	nb_colors: i32, ///< number of colors in pict, undefined when pict is not set
 
-	/**
-	 * Codec implemented by the hardware accelerator.
-	 *
-	 * See AV_CODEC_ID_xxx
-	 */
-	enum AVCodecID id;
-
-	/**
-	 * Supported pixel format.
-	 *
-	 * Only hardware accelerated formats are supported here.
-	 */
-	enum AVPixelFormat pix_fmt;
-
-	/**
-	 * Hardware accelerated codec capabilities.
-	 * see AV_HWACCEL_CODEC_CAP_*
-	 */
-	int capabilities;
-
-	/*****************************************************************
-	 * No fields below this line are part of the public API. They
-	 * may not be used outside of libavcodec and can be changed and
-	 * removed at will.
-	 * New public fields should be added right above.
-	 *****************************************************************
-	 */
-
-	/**
-	 * Allocate a custom buffer
-	 */
-	int (*alloc_frame)(AVCodecContext *avctx, AVFrame *frame);
-
-	/**
-	 * Called at the beginning of each frame or field picture.
-	 *
-	 * Meaningful frame information (codec specific) is guaranteed to
-	 * be parsed at this point. This function is mandatory.
-	 *
-	 * Note that buf can be NULL along with buf_size set to 0.
-	 * Otherwise, this means the whole frame is available at this point.
-	 *
-	 * @param avctx the codec context
-	 * @param buf the frame data buffer base
-	 * @param buf_size the size of the frame in bytes
-	 * @return zero if successful, a negative value otherwise
-	 */
-	int (*start_frame)(AVCodecContext *avctx, const uint8_t *buf, uint32_t buf_size);
-
-	/**
-	 * Callback for parameter data (SPS/PPS/VPS etc).
-	 *
-	 * Useful for hardware decoders which keep persistent state about the
-	 * video parameters, and need to receive any changes to update that state.
-	 *
-	 * @param avctx the codec context
-	 * @param type the nal unit type
-	 * @param buf the nal unit data buffer
-	 * @param buf_size the size of the nal unit in bytes
-	 * @return zero if successful, a negative value otherwise
-	 */
-	int (*decode_params)(AVCodecContext *avctx, int type, const uint8_t *buf, uint32_t buf_size);
-
-	/**
-	 * Callback for each slice.
-	 *
-	 * Meaningful slice information (codec specific) is guaranteed to
-	 * be parsed at this point. This function is mandatory.
-	 * The only exception is XvMC, that works on MB level.
-	 *
-	 * @param avctx the codec context
-	 * @param buf the slice data buffer base
-	 * @param buf_size the size of the slice in bytes
-	 * @return zero if successful, a negative value otherwise
-	 */
-	int (*decode_slice)(AVCodecContext *avctx, const uint8_t *buf, uint32_t buf_size);
-
-	/**
-	 * Called at the end of each frame or field picture.
-	 *
-	 * The whole picture is parsed at this point and can now be sent
-	 * to the hardware accelerator. This function is mandatory.
-	 *
-	 * @param avctx the codec context
-	 * @return zero if successful, a negative value otherwise
-	 */
-	int (*end_frame)(AVCodecContext *avctx);
-
-	/**
-	 * Size of per-frame hardware accelerator private data.
-	 *
-	 * Private data is allocated with av_mallocz() before
-	 * AVCodecContext.get_buffer() and deallocated after
-	 * AVCodecContext.release_buffer().
-	 */
-	int frame_priv_data_size;
-
-	/**
-	 * Called for every Macroblock in a slice.
-	 *
-	 * XvMC uses it to replace the ff_mpv_reconstruct_mb().
-	 * Instead of decoding to raw picture, MB parameters are
-	 * stored in an array provided by the video driver.
-	 *
-	 * @param s the mpeg context
-	 */
-	void (*decode_mb)(struct MpegEncContext *s);
-
-	/**
-	 * Initialize the hwaccel private data.
-	 *
-	 * This will be called from ff_get_format(), after hwaccel and
-	 * hwaccel_context are set and the hwaccel private data in AVCodecInternal
-	 * is allocated.
-	 */
-	int (*init)(AVCodecContext *avctx);
-
-	/**
-	 * Uninitialize the hwaccel private data.
-	 *
-	 * This will be called from get_format() or avcodec_close(), after hwaccel
-	 * and hwaccel_context are already uninitialized.
-	 */
-	int (*uninit)(AVCodecContext *avctx);
-
-	/**
-	 * Size of the private data to allocate in
-	 * AVCodecInternal.hwaccel_priv_data.
-	 */
-	int priv_data_size;
-
-	/**
-	 * Internal hwaccel capabilities.
-	 */
-	int caps_internal;
-
-	/**
-	 * Fill the given hw_frames context with current codec parameters. Called
-	 * from get_format. Refer to avcodec_get_hw_frames_parameters() for
-	 * details.
-	 *
-	 * This CAN be called before AVHWAccel.init is called, and you must assume
-	 * that avctx->hwaccel_priv_data is invalid.
-	 */
-	int (*frame_params)(AVCodecContext *avctx, AVBufferRef *hw_frames_ctx);
-} AVHWAccel;
-
-/**
- * HWAccel is experimental and is thus avoided in favor of non experimental
- * codecs
- */
-#define AV_HWACCEL_CODEC_CAP_EXPERIMENTAL 0x0200
-
-/**
- * Hardware acceleration should be used for decoding even if the codec level
- * used is unknown or higher than the maximum supported level reported by the
- * hardware driver.
- *
- * It's generally a good idea to pass this flag unless you have a specific
- * reason not to, as hardware tends to under-report supported levels.
- */
-#define AV_HWACCEL_FLAG_IGNORE_LEVEL (1 << 0)
-
-/**
- * Hardware acceleration can output YUV pixel formats with a different chroma
- * sampling than 4:2:0 and/or other than 8 bits per component.
- */
-#define AV_HWACCEL_FLAG_ALLOW_HIGH_DEPTH (1 << 1)
-
-/**
- * Hardware acceleration should still be attempted for decoding when the
- * codec profile does not match the reported capabilities of the hardware.
- *
- * For example, this can be used to try to decode baseline profile H.264
- * streams in hardware - it will often succeed, because many streams marked
- * as baseline profile actually conform to constrained baseline profile.
- *
- * @warning If the stream is actually not supported then the behaviour is
- *          undefined, and may include returning entirely incorrect output
- *          while indicating success.
- */
-#define AV_HWACCEL_FLAG_ALLOW_PROFILE_MISMATCH (1 << 2)
-
-/**
- * @}
- */
-
-#if FF_API_AVPICTURE
-/**
- * @defgroup lavc_picture AVPicture
- *
- * Functions for working with AVPicture
- * @{
- */
-
-/**
- * Picture data structure.
- *
- * Up to four components can be stored into it, the last component is
- * alpha.
- * @deprecated use AVFrame or imgutils functions instead
- */
-typedef struct AVPicture {
-	attribute_deprecated
-	uint8_t *data[AV_NUM_DATA_POINTERS];    ///< pointers to the image data planes
-	attribute_deprecated
-	int linesize[AV_NUM_DATA_POINTERS];     ///< number of bytes per line
-} AVPicture;
-
-/**
- * @}
- */
-#endif
-
-
-
-#define AV_SUBTITLE_FLAG_FORCED 0x00000001
-
-typedef struct AVSubtitleRect {
-	int x;         ///< top left corner  of pict, undefined when pict is not set
-	int y;         ///< top left corner  of pict, undefined when pict is not set
-	int w;         ///< width            of pict, undefined when pict is not set
-	int h;         ///< height           of pict, undefined when pict is not set
-	int nb_colors; ///< number of colors in pict, undefined when pict is not set
-
-#if FF_API_AVPICTURE
-	/**
-	 * @deprecated unused
-	 */
-	attribute_deprecated
-	AVPicture pict;
-#endif
 	/**
 	 * data+linesize for the bitmap of this subtitle.
 	 * Can be set for text/ass as well once they are rendered.
 	 */
-	uint8_t *data[4];
-	int linesize[4];
+	data:      [4][^]u8,
+	linesize:  [4]i32,
 
-	enum AVSubtitleType type;
-
-	char *text;                     ///< 0 terminated plain UTF-8 text
+	type:      Subtitle_Type,
+	text:      cstring,  ///< 0 terminated plain UTF-8 text
 
 	/**
 	 * 0 terminated ASS/SSA compatible event line.
 	 * The presentation of this is unaffected by the other values in this
 	 * struct.
 	 */
-	char *ass;
+	ass:       cstring,
 
-	int flags;
-} AVSubtitleRect;
+	flags:     i32,
+}
 
-typedef struct AVSubtitle {
-	uint16_t format; /* 0 = graphics */
-	uint32_t start_display_time; /* relative to packet pts, in ms */
-	uint32_t end_display_time; /* relative to packet pts, in ms */
-	unsigned num_rects;
-	AVSubtitleRect **rects;
-	int64_t pts;    ///< Same as packet pts, in AV_TIME_BASE
-} AVSubtitle;
+Subtitle :: struct {
+	format:             u16, /* 0 = graphics */
+	start_display_time: u32, /* relative to packet pts, in ms */
+	end_display_time:   u32, /* relative to packet pts, in ms */
+	num_rects:          u32,
+	rects:              ^[^]Subtitle_Rect,
+	pts:                i64, ///< Same as packet pts, in AV_TIME_BASE
+}
+
+/*
 
 typedef struct AVCodecParserContext {
 	void *priv_data;
@@ -4215,7 +4026,7 @@ Packet :: struct {
 	 * stored.
 	 * May be NULL, then the packet data is not reference-counted.
 	 */
-	buf: rawptr, // BufferRef *buf;
+	buf:             rawptr, // BufferRef *buf;
 
 	/**
 	 * Presentation timestamp in AVStream->time_base units; the time at which
@@ -4226,41 +4037,45 @@ Packet :: struct {
 	 * the terms dts and pts/cts to mean something different. Such timestamps
 	 * must be converted to true pts/dts before they are stored in AVPacket.
 	 */
-	pts: i64,
+	pts:             i64,
 
 	/**
 	 * Decompression timestamp in AVStream->time_base units; the time at which
 	 * the packet is decompressed.
 	 * Can be AV_NOPTS_VALUE if it is not stored in the file.
 	 */
-	dts: i64,
-	data: [^]u8,
-	size: i32,
-	stream_index: i32,
+	dts:             i64,
+	data:            [^]u8,
+	size:            i32,
+	stream_index:    i32,
 
 	/**
 	 * A combination of FLAG values
 	 */
-	flags: Packet_Flags,
+	flags:           Packet_Flags,
 	/**
 	 * Additional packet data that can be provided by the container.
 	 * Packet can contain several types of side information.
 	 */
-	side_data: [^]Packet_Side_Data,
+	side_data:       [^]Packet_Side_Data,
 	side_data_elems: i32,
 
 	/**
 	 * Duration of this packet in AVStream->time_base units, 0 if unknown.
 	 * Equals next_pts - this_pts in presentation order.
 	 */
-	duration: i64,
+	duration:        i64,
 
-	pos: i64, ///< byte position in stream, -1 if unknown
+	pos:             i64, ///< byte position in stream, -1 if unknown
+
+	_opaque:         rawptr,
+	opaque_ref:      ^Buffer_Ref,
+	time_base:       Rational,
 }
 
 Packet_List :: struct {
-	plt: Packet,
-	next: ^Packet_List,
+	plt:             Packet,
+	next:            ^Packet_List,
 }
 
 Side_Data_Param_Change_Flags :: enum i32 {
@@ -5698,7 +5513,7 @@ Active_Format_Description :: enum i32 {
 
 FRAME_CROP_UNALIGNED :: 1
 
-HW_Device_Type :: enum i32 {
+Hardware_Device_Type :: enum i32 {
 	None,
 	VDPAU,
 	CUDA,
@@ -5713,12 +5528,12 @@ HW_Device_Type :: enum i32 {
 	Vulkan,
 }
 
-HW_Frame_Transfer_Direction :: enum i32 {
+Hardware_Device_Type_Frame_Transfer_Direction :: enum i32 {
 	From,
 	To,
 }
 
-HW_Frame_Mapping :: enum i32 {
+Hardware_Device_Type_Frame_Mapping :: enum i32 {
 	Read      = 1,
 	Write     = 2,
 	Overwrite = 4,
@@ -6189,4 +6004,42 @@ Frame :: struct {
 	 * for the target frame's private_ref field.
 	 */
 	private_ref:             ^Buffer_Ref,
+}
+
+Hardware_Device_Internal :: struct {}
+
+Hardware_Device_Context :: struct {
+	class:             ^Class,
+	internal:          ^Hardware_Device_Internal,
+	type:              Hardware_Device_Type,
+	hwctx:             rawptr,
+	free:              #type proc(ctx: ^Hardware_Device_Context),
+	user_opaque:       rawptr,
+}
+
+Hardware_Frames_Internal :: struct {}
+
+Hardware_Frames_Context :: struct {
+	_class:            ^Class,
+	internal:          ^Hardware_Frames_Internal,
+	device_ref:        ^Buffer_Ref,
+	device_ctx:        ^Hardware_Device_Context,
+	hwctx:             rawptr,
+	free:              #type proc(ctx: ^Hardware_Frames_Context),
+	user_opaque:       rawptr,
+	pool:              ^Buffer_Pool,
+	initial_pool_size: i32,
+	format:            Pixel_Format,
+	sw_format:         Pixel_Format,
+	width:             i32,
+	height:            i32,
+}
+
+Hardware_Frames_Constraints :: struct {
+	valid_hw_formats: ^Pixel_Format,
+	valid_sw_formats: ^Pixel_Format,
+	min_width:        i32,
+	min_height:       i32,
+	max_width:        i32,
+	max_height:       i32,
 }
