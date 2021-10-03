@@ -1642,7 +1642,7 @@ Codec_Context :: struct {
 	 * - decoding: Set by libavcodec, user can override.
 	 */
 	execute:                       #type proc(ctx: ^Codec_Context, func: #type proc(ctx: ^Codec_Context, arg: rawptr) -> i32,
-								              arg: rawptr, ret: ^i32, count: i32, size: i32) -> i32,
+											  arg: rawptr, ret: ^i32, count: i32, size: i32) -> i32,
 
 	/**
 	 * The codec may call this to execute several independent things.
@@ -1663,7 +1663,7 @@ Codec_Context :: struct {
 	 * - decoding: Set by libavcodec, user can override.
 	 */
 	execute2:                      #type proc(ctx: ^Codec_Context, func: #type proc(ctx: ^Codec_Context, arg: rawptr, jobnr: i32, threadnr: i32) -> i32,
-							  	              arg: rawptr, ret: ^i32, count: i32) -> i32,
+											  arg: rawptr, ret: ^i32, count: i32) -> i32,
 
 	/**
 	 * noise vs. sse weight for the nsse comparison function
@@ -2049,6 +2049,8 @@ Codec_Context :: struct {
  */
 Hardware_Accelerator :: struct{}
 
+Hardware_Device      :: struct{}
+
 Subtitle_Flag_Forced :: 0x00000001
 
 Subtitle_Rect :: struct {
@@ -2087,17 +2089,25 @@ Subtitle :: struct {
 	pts:                i64, ///< Same as packet pts, in AV_TIME_BASE
 }
 
-/*
+PARSER_PTS_NB :: 4
 
-typedef struct AVCodecParserContext {
-	void *priv_data;
-	struct AVCodecParser *parser;
-	int64_t frame_offset; /* offset of the current frame */
-	int64_t cur_offset; /* current offset
-						   (incremented by each av_parser_parse()) */
-	int64_t next_frame_offset; /* offset of the next frame */
+Parser_Context_Flag :: enum i32 {
+	Complete_Frames =  0,
+	Once            =  1,
+	/// Set if the parser has a valid file offset
+	Fetched_Offset  =  2,
+	Use_Codec_TS    = 12,
+}
+Parser_Context_Flags :: bit_set[Parser_Context_Flag; i32]
+
+Codec_Parser_Context :: struct {
+	priv_data:          rawptr,
+	parser:             ^Codec_Parser,
+	frame_offset:       i64,          /* offset of the current frame */
+	cur_offset:         i64,          /* current offset (incremented by each av_parser_parse()) */
+	next_frame_offset:  i64,          /* offset of the next frame */
 	/* video info */
-	int pict_type; /* XXX: Put it back in AVCodecContext. */
+	pict_type:          i64,          /* XXX: Put it back in Codec_Context. */
 	/**
 	 * This field is used for proper frame duration computation in lavf.
 	 * It signals, how much longer the frame duration of the current frame
@@ -2107,30 +2117,24 @@ typedef struct AVCodecParserContext {
 	 *
 	 * It is used by codecs like H.264 to display telecined material.
 	 */
-	int repeat_pict; /* XXX: Put it back in AVCodecContext. */
-	int64_t pts;     /* pts of the current frame */
-	int64_t dts;     /* dts of the current frame */
+	repeat_pict:             i64, /* XXX: Put it back in Codec_Context. */
+	pts:                     i64, /* pts of the current frame */
+	dts:                     i64, /* dts of the current frame */
 
 	/* private data */
-	int64_t last_pts;
-	int64_t last_dts;
-	int fetch_timestamp;
+	last_pts:                i64,
+	last_dts:                i64,
+	fetch_timestamp:         i32,
 
-#define AV_PARSER_PTS_NB 4
-	int cur_frame_start_index;
-	int64_t cur_frame_offset[AV_PARSER_PTS_NB];
-	int64_t cur_frame_pts[AV_PARSER_PTS_NB];
-	int64_t cur_frame_dts[AV_PARSER_PTS_NB];
+	cur_frame_start_index:   i32,
+	cur_frame_offset:        [PARSER_PTS_NB]i64,
+	cur_frame_pts:           [PARSER_PTS_NB]i64,
+	cur_frame_dts:           [PARSER_PTS_NB]i64,
 
-	int flags;
-#define PARSER_FLAG_COMPLETE_FRAMES           0x0001
-#define PARSER_FLAG_ONCE                      0x0002
-/// Set if the parser has a valid file offset
-#define PARSER_FLAG_FETCHED_OFFSET            0x0004
-#define PARSER_FLAG_USE_CODEC_TS              0x1000
+	flags:                   Parser_Context_Flags,
 
-	int64_t offset;      ///< byte offset from starting packet start
-	int64_t cur_frame_end[AV_PARSER_PTS_NB];
+	offset:                  i64, ///< byte offset from starting packet start
+	cur_frame_end:           [PARSER_PTS_NB]i64,
 
 	/**
 	 * Set by parser to 1 for key frames and 0 for non-key frames.
@@ -2138,15 +2142,7 @@ typedef struct AVCodecParserContext {
 	 * old-style fallback using AV_PICTURE_TYPE_I picture type as key frames
 	 * will be used.
 	 */
-	int key_frame;
-
-#if FF_API_CONVERGENCE_DURATION
-	/**
-	 * @deprecated unused
-	 */
-	attribute_deprecated
-	int64_t convergence_duration;
-#endif
+	key_frame:               i32,
 
 	// Timestamp generation support:
 	/**
@@ -2158,7 +2154,7 @@ typedef struct AVCodecParserContext {
 	 * For example, this corresponds to presence of H.264 buffering period
 	 * SEI message.
 	 */
-	int dts_sync_point;
+	dts_sync_point:          i32,
 
 	/**
 	 * Offset of the current timestamp against last timestamp sync point in
@@ -2173,7 +2169,7 @@ typedef struct AVCodecParserContext {
 	 *
 	 * For example, this corresponds to H.264 cpb_removal_delay.
 	 */
-	int dts_ref_dts_delta;
+	dts_ref_dts_delta:       i32,
 
 	/**
 	 * Presentation delay of current frame in units of AVCodecContext.time_base.
@@ -2187,33 +2183,33 @@ typedef struct AVCodecParserContext {
 	 *
 	 * For example, this corresponds to H.264 dpb_output_delay.
 	 */
-	int pts_dts_delta;
+	pts_dts_delta:           i32,
 
 	/**
 	 * Position of the packet in file.
 	 *
 	 * Analogous to cur_frame_pts/dts
 	 */
-	int64_t cur_frame_pos[AV_PARSER_PTS_NB];
+	cur_frame_pos:           [PARSER_PTS_NB]i64,
 
 	/**
 	 * Byte position of currently parsed frame in stream.
 	 */
-	int64_t pos;
+	pos:                     i64,
 
 	/**
 	 * Previous frame byte position.
 	 */
-	int64_t last_pos;
+	last_pos:                i64,
 
 	/**
 	 * Duration of the current frame.
 	 * For audio, this is in units of 1 / AVCodecContext.sample_rate.
 	 * For all other types, this is in units of AVCodecContext.time_base.
 	 */
-	int duration;
+	duration:                i32,
 
-	enum AVFieldOrder field_order;
+	field_order:             Field_Order,
 
 	/**
 	 * Indicate whether a picture is coded as a frame, top field or bottom field.
@@ -2223,7 +2219,7 @@ typedef struct AVCodecParserContext {
 	 * equal to 1 and bottom_field_flag equal to 0 corresponds to
 	 * AV_PICTURE_STRUCTURE_TOP_FIELD.
 	 */
-	enum AVPictureStructure picture_structure;
+	picture_structure:       Picture_Structure,
 
 	/**
 	 * Picture number incremented in presentation or output order.
@@ -2231,19 +2227,19 @@ typedef struct AVCodecParserContext {
 	 *
 	 * For example, this corresponds to H.264 PicOrderCnt.
 	 */
-	int output_picture_number;
+	output_picture_number:   i32,
 
 	/**
 	 * Dimensions of the decoded video intended for presentation.
 	 */
-	int width;
-	int height;
+	width:                   i32,
+	height:                  i32,
 
 	/**
 	 * Dimensions of the coded video.
 	 */
-	int coded_width;
-	int coded_height;
+	coded_width:             i32,
+	coded_height:            i32,
 
 	/**
 	 * The format of the coded data, corresponds to enum AVPixelFormat for video
@@ -2253,47 +2249,136 @@ typedef struct AVCodecParserContext {
 	 * decodes the data, so the format reported here might be different from the
 	 * one returned by a decoder.
 	 */
-	int format;
-} AVCodecParserContext;
+	format:                  i32,
+}
 
-typedef struct AVCodecParser {
-	int codec_ids[5]; /* several codec IDs are permitted */
-	int priv_data_size;
-	int (*parser_init)(AVCodecParserContext *s);
+CODEC_PARSER_NUM_IDS :: 7
+
+Codec_Parser :: struct {
+	codec_ids:               [CODEC_PARSER_NUM_IDS]i32, /* several codec IDs are permitted */
+	priv_data_size:          i32,
+
+	parser_init:             #type proc(ctx:          ^Codec_Parser_Context) -> i32,
+
 	/* This callback never returns an error, a negative value means that
 	 * the frame start was in a previous packet. */
-	int (*parser_parse)(AVCodecParserContext *s,
-						AVCodecContext *avctx,
-						const uint8_t **poutbuf, int *poutbuf_size,
-						const uint8_t *buf, int buf_size);
-	void (*parser_close)(AVCodecParserContext *s);
-	int (*split)(AVCodecContext *avctx, const uint8_t *buf, int buf_size);
-#if FF_API_NEXT
-	attribute_deprecated
-	struct AVCodecParser *next;
-#endif
-} AVCodecParser;
+	parser_parse:            #type proc(ctx:          ^Codec_Parser_Context,
+										avctx:        ^Codec_Context,
+										poutbuf:      ^[^]u8,
+										poutbuf_size: ^i32,
+										buf:          [^]u8,
+										buf_size:     i32) -> i32,
+	parser_close:            #type proc(ctx:          ^Codec_Parser_Context),
+	split:                   #type proc(ctx:          ^Codec_Context, buf: [^]u8, buf_size: i32) -> i32,
+}
 
-typedef struct AVBitStreamFilterContext {
-	void *priv_data;
-	const struct AVBitStreamFilter *filter;
-	AVCodecParserContext *parser;
-	struct AVBitStreamFilterContext *next;
+Bit_Stream_Filter :: struct {
+	name:              cstring,
+
+	/**
+	 * A list of codec ids supported by the filter, terminated by
+	 * AV_CODEC_ID_NONE.
+	 * May be NULL, in that case the bitstream filter works with any codec id.
+	 */
+	codec_ids:         [^]Codec_ID,
+
+	/**
+	 * A class for the private data, used to declare bitstream filter private
+	 * AVOptions. This field is NULL for bitstream filters that do not declare
+	 * any options.
+	 *
+	 * If this field is non-NULL, the first member of the filter private data
+	 * must be a pointer to AVClass, which will be set by libavcodec generic
+	 * code to this class.
+	 */
+	priv_class:        ^Class,
+
+	/*****************************************************************
+	 * No fields below this line are part of the public API. They
+	 * may not be used outside of libavcodec and can be changed and
+	 * removed at will.
+	 * New public fields should be added right above.
+	 *****************************************************************
+	 */
+
+	priv_data_size:    i32,
+	init:              #type proc(ctx: BSF_Context) -> i32,
+	filter:            #type proc(ctx: BSF_Context, pkt: ^Packet) -> i32,
+	close:             #type proc(ctx: BSF_Context),
+	flush:             #type proc(ctx: BSF_Context),
+}
+
+/**
+ * The bitstream filter state.
+ *
+ * This struct must be allocated with av_bsf_alloc() and freed with
+ * av_bsf_free().
+ *
+ * The fields in the struct will only be changed (by the caller or by the
+ * filter) as described in their documentation, and are to be considered
+ * immutable otherwise.
+ */
+BSF_Context :: struct {
+	/**
+	 * A class for logging and AVOptions
+	 */
+	class:             ^Class,
+
+	/**
+	 * The bitstream filter this context is an instance of.
+	 */
+	filter:            ^Bit_Stream_Filter,
+
+	/**
+	 * Opaque filter-specific private data. If filter->priv_class is non-NULL,
+	 * this is an AVOptions-enabled struct.
+	 */
+	priv_data:         rawptr,
+
+	/**
+	 * Parameters of the input stream. This field is allocated in
+	 * av_bsf_alloc(), it needs to be filled by the caller before
+	 * av_bsf_init().
+	 */
+	par_in:            ^Codec_Parameters,
+
+	/**
+	 * Parameters of the output stream. This field is allocated in
+	 * av_bsf_alloc(), it is set by the filter in av_bsf_init().
+	 */
+	par_out:           ^Codec_Parameters,
+
+	/**
+	 * The timebase used for the timestamps of the input packets. Set by the
+	 * caller before av_bsf_init().
+	 */
+	time_base_in:      Rational,
+
+	/**
+	 * The timebase used for the timestamps of the output packets. Set by the
+	 * filter in av_bsf_init().
+	 */
+	time_base_out:     Rational,
+}
+
+Bit_Stream_Filter_Context :: struct {
+	priv_data: rawptr,
+	filter:    ^Bit_Stream_Filter,
+	parser:    ^Codec_Parser_Context,
+	next:      ^Bit_Stream_Filter_Context,
 	/**
 	 * Internal default arguments, used if NULL is passed to av_bitstream_filter_filter().
 	 * Not for access by library users.
 	 */
-	char *args;
-} AVBitStreamFilterContext;
+	args: cstring,
+}
 
-enum AVLockOp {
-  AV_LOCK_CREATE,  ///< Create a mutex
-  AV_LOCK_OBTAIN,  ///< Lock the mutex
-  AV_LOCK_RELEASE, ///< Unlock the mutex
-  AV_LOCK_DESTROY, ///< Free mutex resources
-};
-
-*/
+Lock_Operation :: enum {
+	Create,  ///< Create a mutex
+	Obtain,  ///< Lock the mutex
+	Release, ///< Unlock the mutex
+	Destroy, ///< Free mutex resources
+}
 
 Codec_Descriptor_Property :: enum i32 {
 	/**
@@ -2904,14 +2989,70 @@ Codec_ID :: enum u32 {
    ============================================================================================== */
 
 Device_Info :: struct {
-    device_name:        cstring,
-    device_description: cstring,
+	device_name:        cstring,
+	device_description: cstring,
 }
 
 Device_Info_List :: struct {
-    devices:            ^[^]Device_Info,
-    nb_devices:         i32,
-    default_device:     i32,
+	devices:            ^[^]Device_Info,
+	nb_devices:         i32,
+	default_device:     i32,
+}
+
+/**
+ * Following API allows user to probe device capabilities (supported codecs,
+ * pixel formats, sample formats, resolutions, channel counts, etc).
+ * It is build on top op AVOption API.
+ * Queried capabilities make it possible to set up converters of video or audio
+ * parameters that fit to the device.
+ *
+ * List of capabilities that can be queried:
+ *  - Capabilities valid for both audio and video devices:
+ *    - codec:          supported audio/video codecs.
+ *                      type: AV_OPT_TYPE_INT (AVCodecID value)
+ *  - Capabilities valid for audio devices:
+ *    - sample_format:  supported sample formats.
+ *                      type: AV_OPT_TYPE_INT (AVSampleFormat value)
+ *    - sample_rate:    supported sample rates.
+ *                      type: AV_OPT_TYPE_INT
+ *    - channels:       supported number of channels.
+ *                      type: AV_OPT_TYPE_INT
+ *    - channel_layout: supported channel layouts.
+ *                      type: AV_OPT_TYPE_INT64
+ *  - Capabilities valid for video devices:
+ *    - pixel_format:   supported pixel formats.
+ *                      type: AV_OPT_TYPE_INT (AVPixelFormat value)
+ *    - window_size:    supported window sizes (describes size of the window size presented to the user).
+ *                      type: AV_OPT_TYPE_IMAGE_SIZE
+ *    - frame_size:     supported frame sizes (describes size of provided video frames).
+ *                      type: AV_OPT_TYPE_IMAGE_SIZE
+ *    - fps:            supported fps values
+ *                      type: AV_OPT_TYPE_RATIONAL
+ *
+ * Value of the capability may be set by user using av_opt_set() function
+ * and AVDeviceCapabilitiesQuery object. Following queries will
+ * limit results to the values matching already set capabilities.
+ * For example, setting a codec may impact number of formats or fps values
+ * returned during next query. Setting invalid value may limit results to zero.
+*/
+Device_Capabilities_Query :: struct {
+	class:              ^Class,
+	device_context:     ^Format_Context,
+
+	codec:              Codec_ID,
+	sample_format:      Sample_Format,
+	pixel_format:       Pixel_Format,
+
+	sample_rate:        i32,
+	channels:           i32,
+	channel_layout:     Channel_Layout,
+
+	window_width:       i32,
+	window_height:      i32,
+	frame_width:        i32,
+	frame_height:       i32,
+
+	fps:                Rational,
 }
 
 /* ==============================================================================================
@@ -2981,13 +3122,13 @@ Output_Format :: struct {
 	codec_tags:              ^[^]Codec_Tag,
 	priv_class:              ^Class,
 
-    /*****************************************************************
-     * No fields below this line are part of the public API. They
-     * may not be used outside of libavformat and can be changed and
-     * removed at will.
-     * New public fields should be added right above.
-     *****************************************************************
-     */
+	/*****************************************************************
+	 * No fields below this line are part of the public API. They
+	 * may not be used outside of libavformat and can be changed and
+	 * removed at will.
+	 * New public fields should be added right above.
+	 *****************************************************************
+	 */
 
 	priv_data_size:          i32,
 	flags_internal:          i32,
@@ -3050,6 +3191,19 @@ IO_Dir_Entry_Type :: enum i32 {
 	Server,
 	Share,
 	Workgroup,
+}
+
+IO_Dir_Entry :: struct {
+	name:                   cstring,
+	type:                   i32,
+	utf8:                   i32,
+	size:                   i64,
+	modification_timestamp: i64,
+	access_timestamp:       i64,
+	statuschange_timestamp: i64,
+	user_id:                i64,
+	group_id:               i64,
+	filemode:               i64,
 }
 
 IO_Data_Marker_Type :: enum i32 {
@@ -3116,6 +3270,83 @@ IO_Context :: struct {
 IO_Interrupt_CB :: struct {
 	callback:                #type proc() -> i32,
 	opaque:                  rawptr,
+}
+
+Open_Callback :: #type proc(ctx:   ^Format_Context,  pb: ^[^]IO_Context, url: cstring, flags: i32,
+							intcb: ^IO_Interrupt_CB, options: ^[^]Dictionary) -> i32
+
+
+URL_Context :: struct {
+	class:                   ^Class,           // information for av_log().
+	protocol:                ^URL_Protocol,
+	priv_data:               rawptr,
+	filename:                cstring,          // specified URL
+	flags:                   i32,
+	max_packet_size:         i32,              // if non zero, the stream is packetized with this max packet size
+
+	is_streamed:             b32,              // true if streamed (no seek possible), default = false
+	is_connected:            b32,
+
+	interrupt_callback:      IO_Interrupt_CB, 
+
+	rw_timeout:              i64,              // maximum time to wait for (network) read/write operation completion, in mcs.
+	protocol_whitelist:      cstring,
+	protocol_blacklist:      cstring,
+	min_packet_size:         i32,              // if non zero, the stream is packetized with this min packet size.
+}
+
+URL_Protocol :: struct {
+	name:                    cstring,
+	url_open:                #type proc(h: ^URL_Context, url: cstring, flags: i32) -> i32,
+	/**
+	 * This callback is to be used by protocols which open further nested
+	 * protocols. options are then to be passed to ffurl_open_whitelist()
+	 * or ffurl_connect() for those nested protocols.
+	 */
+	url_open2:               #type proc(h: ^URL_Context, url: cstring, flags: i32, options: ^[^]Dictionary) -> i32,
+	url_accept:              #type proc(h: ^URL_Context, c: ^[^]URL_Context) -> i32,
+	url_handshake:           #type proc(c: ^URL_Context) -> i32,
+
+	/**
+	 * Read data from the protocol.
+	 * If data is immediately available (even less than size), EOF is
+	 * reached or an error occurs (including EINTR), return immediately.
+	 * Otherwise:
+	 * In non-blocking mode, return AVERROR(EAGAIN) immediately.
+	 * In blocking mode, wait for data/EOF/error with a short timeout (0.1s),
+	 * and return AVERROR(EAGAIN) on timeout.
+	 * Checking interrupt_callback, looping on EINTR and EAGAIN and until
+	 * enough data has been read is left to the calling function; see
+	 * retry_transfer_wrapper in avio.c.
+	 */
+	url_read:                  #type proc(h: ^URL_Context, buf: [^]u8, size: i32)                         -> i32,
+	url_write:                 #type proc(h: ^URL_Context, buf: [^]u8, size: i32)                         -> i32,
+	url_seek:                  #type proc(h: ^URL_Context, pos: i64, whence: i32)                         -> i64,
+	url_close:                 #type proc(h: ^URL_Context)                                                -> i32,
+
+	url_read_pause:            #type proc(h: ^URL_Context, pause: i32)                                    -> i32,
+	url_read_seek:             #type proc(h: ^URL_Context, stream_index: i32, timestamp: i64, flags: i32) -> i64,
+
+	url_get_file_handle:       #type proc(h: ^URL_Context)                                                -> i32,
+	url_get_multi_file_handle: #type proc(h: ^URL_Context, handles: ^[^]i32, num_handles: ^i32)           -> i32,
+	url_get_short_seek:        #type proc(h: ^URL_Context)                                                -> i32,
+	url_shutdown:              #type proc(h: ^URL_Context, flags: i32)                                    -> i32,
+
+	priv_data_class:           ^Class,
+	priv_data_size:            i32,
+	flags:                     i32,
+
+	url_check:                 #type proc(h: ^URL_Context, mask: i32)                                     -> i32,
+	url_open_dir:              #type proc(h: ^URL_Context)                                                -> i32,
+	url_read_dir:              #type proc(h: ^URL_Context, next: ^^IO_Dir_Entry)                          -> i32,
+	url_close_dir:             #type proc(h: ^URL_Context)                                                -> i32,
+	url_delete:                #type proc(h: ^URL_Context)                                                -> i32,
+	url_move:                  #type proc(src: ^URL_Context, dst: ^URL_Context)                           -> i32,
+	default_whitelist:         cstring,
+}
+
+IO_Dir_Context :: struct {
+	url_context: ^URL_Context,
 }
 
 /**
@@ -3771,7 +4002,8 @@ Index_Entry :: struct {
 					  *  is known
 					  */
 
-	flags_and_size: i32, // Index_Flag in bottom two bits, size in top 30 bits.
+	flags:          Index_Flag,
+	size:           i32,
 	min_distance:   i32, /**< Minimum distance between this and the previous keyframe, used to avoid unneeded searching. */
 }
 
@@ -3906,7 +4138,7 @@ Stream :: struct {
 	 */
 	sample_aspect_ratio: Rational,
 
-	metadata: rawptr, // metadata: ^Dictionary,
+	metadata:    ^Dictionary,
 
 	/**
 	 * Average framerate
@@ -3944,7 +4176,7 @@ Stream :: struct {
 	 *
 	 * @see av_format_inject_global_side_data()
 	 */
-	side_data: ^Packet_Side_Data, // AVPacketSideData *side_data;
+	side_data: [^]Packet_Side_Data, // AVPacketSideData *side_data;
 	/**
 	 * The number of elements in the AVStream.side_data array.
 	 */
@@ -3993,7 +4225,7 @@ Stream :: struct {
 	 * add new fields to AVStreamInternal.
 	 *****************************************************************
 	 */
-	unused: rawptr,
+	pts_wrap_bits: i32,
 }
 
 Packet_Flag :: enum i32 {
@@ -4074,7 +4306,7 @@ Packet :: struct {
 }
 
 Packet_List :: struct {
-	plt:             Packet,
+	pkt:             Packet,
 	next:            ^Packet_List,
 }
 
@@ -4567,12 +4799,12 @@ Program :: struct {
 }
 
 FMT_CTX_NOHEADER   :: 0x0001 /**< signal that no header is present
-                               (streams are added dynamically) */
+							   (streams are added dynamically) */
 FMT_CTX_UNSEEKABLE :: 0x0002 /**< signal that the stream is definitely
-                               not seekable, and attempts to call the
-                               seek function will fail. For some
-                               network protocols (e.g. HLS), this can
-                               change dynamically at runtime. */
+							   not seekable, and attempts to call the
+							   seek function will fail. For some
+							   network protocols (e.g. HLS), this can
+							   change dynamically at runtime. */
 
 Chapter :: struct {
 	id:                 i64,          ///< unique ID to identify the chapter
