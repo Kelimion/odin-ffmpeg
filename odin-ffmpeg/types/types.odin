@@ -127,19 +127,6 @@ Codec_Export_Data_Flag :: enum i32 {
 }
 Codec_Export_Data_Flags :: bit_set[Codec_Export_Data_Flag; i32]
 
-Codec_Hardware_Config :: struct {
-	pix_fmt:     Pixel_Format,
-	methods:     i32,
-	device_type: Hardware_Device_Type,
-}
-
-Codec_HW_Config_Method :: enum i32 {
-	HW_Device_Context = 1,
-	HW_Frame_Context  = 2,
-	Internal          = 4,
-	AdHoc             = 8,
-}
-
 Subtitle_Type :: enum i32 {
 	NONE = 0,
 	Bitmap,    ///< A bitmap, pict will be set
@@ -545,8 +532,8 @@ Codec_Profile :: enum i32 {
 	MPEG2_SNR_SCALABLE                    =     3,
 	MPEG2_MAIN                            =     4,
 	MPEG2_SIMPLE                          =     5,
-	H264_CONSTRAINED                      =     1 <<  9, // 8+1; constraint_set1_flag
-	H264_INTRA                            =     1 << 11, // 8+3; constraint_set3_flag
+	H264_CONSTRAINED                      =     1 <<  9, // 8+1 constraint_set1_flag
+	H264_INTRA                            =     1 << 11, // 8+3 constraint_set3_flag
 	H264_BASELINE                         =    66,
 	H264_CONSTRAINED_BASELINE             =    66 | H264_CONSTRAINED,
 	H264_MAIN                             =    77,
@@ -696,7 +683,7 @@ Codec_Context :: struct {
 
 	/**
 	 * the average bitrate
-	 * - encoding: Set by user; unused for constant quantizer encoding.
+	 * - encoding: Set by user unused for constant quantizer encoding.
 	 * - decoding: Set by user, may be overwritten by libavcodec
 	 *             if this info is available in the stream
 	 */
@@ -705,7 +692,7 @@ Codec_Context :: struct {
 	/**
 	 * number of bits the bitstream is allowed to diverge from the reference.
 	 *           the reference can be CBR (for CBR pass1) or VBR (for pass2)
-	 * - encoding: Set by user; unused for constant quantizer encoding.
+	 * - encoding: Set by user unused for constant quantizer encoding.
 	 * - decoding: unused
 	 */
 	bit_rate_tolerance:            i32,
@@ -864,7 +851,7 @@ Codec_Context :: struct {
 	 * all codecs can do that. You must check the codec capabilities
 	 * beforehand.
 	 * When multithreading is used, it may be called from multiple threads
-	 * at the same time; threads might draw different parts of the same Frame,
+	 * at the same time threads might draw different parts of the same Frame,
 	 * or multiple Frames, and there is no guarantee that slices will be drawn
 	 * in order.
 	 * The function is also used by hardware acceleration APIs.
@@ -1511,7 +1498,7 @@ Codec_Context :: struct {
 	debug:                         Codec_Context_Debug_Flags,
 
 	/**
-	 * Error recognition; may misdetect some more or less valid parts as errors.
+	 * Error recognition may misdetect some more or less valid parts as errors.
 	 * - encoding: Set by user.
 	 * - decoding: Set by user.
 	 */
@@ -1624,7 +1611,7 @@ Codec_Context :: struct {
 	 *
 	 * @deprecated the custom get_buffer2() callback should always be
 	 *   thread-safe. Thread-unsafe get_buffer2() implementations will be
-	 *   invalid starting with LIBAVCODEC_VERSION_MAJOR=60; in other words,
+	 *   invalid starting with LIBAVCODEC_VERSION_MAJOR=60 in other words,
 	 *   libavcodec will behave as if this field was always set to 1.
 	 *   Callers that want to be forward compatible with future libavcodec
 	 *   versions should wrap access to this field in
@@ -2437,7 +2424,7 @@ Codec_Descriptor :: struct {
 	props:      Codec_Descriptor_Properties,
 	/**
 	 * MIME type(s) associated with the codec.
-	 * May be NULL; if not, a NULL-terminated array of MIME types.
+	 * May be NULL if not, a NULL-terminated array of MIME types.
 	 * The first item is always non-NULL and is the preferred MIME type.
 	 */
 	mime_types: [^]cstring,
@@ -2986,6 +2973,36 @@ Codec_ID :: enum u32 {
 	  DEVICES - DEVICES - DEVICES - DEVICES - DEVICES - DEVICES - DEVICES - DEVICES - DEVICES
    ============================================================================================== */
 
+App_To_Dev_Message_Type :: enum i32 {
+	None                  = 'E' | 'N' << 8 | 'O' << 16 | 'N' << 24,
+	Window_Size           = 'M' | 'O' << 8 | 'E' << 16 | 'G' << 24,
+	Window_Repaint        = 'A' | 'P' << 8 | 'E' << 16 | 'R' << 24,
+	Pause                 = ' ' | 'U' << 8 | 'A' << 16 | 'P' << 24,
+	Play                  = 'Y' | 'A' << 8 | 'L' << 16 | 'P' << 24,
+	Toggle_Pause          = 'T' | 'U' << 8 | 'A' << 16 | 'P' << 24,
+	Set_Volume            = 'L' | 'O' << 8 | 'V' << 16 | 'S' << 24,
+	Mute                  = 'T' | 'U' << 8 | 'M' << 16 | ' ' << 24,
+	Unmute                = 'T' | 'U' << 8 | 'M' << 16 | 'U' << 24,
+	Toggle_Mute           = 'T' | 'U' << 8 | 'M' << 16 | 'T' << 24,
+	Get_Volume            = 'L' | 'O' << 8 | 'V' << 16 | 'G' << 24,
+	Get_Mute              = 'T' | 'U' << 8 | 'M' << 16 | 'G' << 24,
+}
+
+Dev_To_App_Message_Type :: enum i32  {
+	None                  = 'E' | 'N' << 8 | 'O' << 16 | 'N' << 24,
+	Create_Window_Buffer  = 'E' | 'R' << 8 | 'C' << 16 | 'B' << 24,
+	Prepare_Window_Buffer = 'E' | 'R' << 8 | 'P' << 16 | 'B' << 24,
+	Display_Window_Buffer = 'S' | 'I' << 8 | 'D' << 16 | 'B' << 24,
+	Destroy_Window_Buffer = 'S' | 'E' << 8 | 'D' << 16 | 'B' << 24,
+	Buffer_Overflow       = 'L' | 'F' << 8 | 'O' << 16 | 'B' << 24,
+	Buffer_Underflow      = 'L' | 'F' << 8 | 'U' << 16 | 'B' << 24,
+	Buffer_Readable       = ' ' | 'D' << 8 | 'R' << 16 | 'B' << 24,
+	Buffer_Writable       = ' ' | 'R' << 8 | 'W' << 16 | 'B' << 24,
+	Mute_State_Changed    = 'T' | 'U' << 8 | 'M' << 16 | 'C' << 24,
+	Volume_Level_Changed  = 'L' | 'O' << 8 | 'V' << 16 | 'C' << 24,
+}
+
+
 Device_Info :: struct {
 	device_name:        cstring,
 	device_description: cstring,
@@ -2995,6 +3012,97 @@ Device_Info_List :: struct {
 	devices:            ^[^]Device_Info,
 	nb_devices:         i32,
 	default_device:     i32,
+}
+
+Hardware_Device_Type :: enum i32 {
+	None,
+	VDPAU,
+	CUDA,
+	VAAPI,
+	DXVA2,
+	QSV,
+	VideoToolbox,
+	D3D11Va,
+	DRM,
+	OpenCL,
+	Media_Codec,
+	Vulkan,
+}
+
+Hardware_Device_Type_Frame_Transfer_Direction :: enum i32 {
+	From,
+	To,
+}
+
+Hardware_Device_Type_Frame_Mapping :: enum i32 {
+	Read      = 1,
+	Write     = 2,
+	Overwrite = 4,
+	Direct    = 8,
+}
+
+Hardware_Accelerator_ID :: enum i32 {
+	None = 0,
+	Auto,
+	Generic,
+	Video_Toolbox,
+}
+
+Hardware_Device :: struct {
+	name:       cstring,
+	type:       Hardware_Device_Type,
+	device_ref: ^Buffer_Ref,
+}
+
+Hardware_Device_Internal :: struct {}
+
+Hardware_Device_Context :: struct {
+	class:             ^Class,
+	internal:          ^Hardware_Device_Internal,
+	type:              Hardware_Device_Type,
+	hwctx:             rawptr,
+	free:              #type proc(ctx: ^Hardware_Device_Context),
+	user_opaque:       rawptr,
+}
+
+Hardware_Frames_Internal :: struct {}
+
+Hardware_Frames_Context :: struct {
+	_class:            ^Class,
+	internal:          ^Hardware_Frames_Internal,
+	device_ref:        ^Buffer_Ref,
+	device_ctx:        ^Hardware_Device_Context,
+	hwctx:             rawptr,
+	free:              #type proc(ctx: ^Hardware_Frames_Context),
+	user_opaque:       rawptr,
+	pool:              ^Buffer_Pool,
+	initial_pool_size: i32,
+	format:            Pixel_Format,
+	sw_format:         Pixel_Format,
+	width:             i32,
+	height:            i32,
+}
+
+Hardware_Frames_Constraints :: struct {
+	valid_hw_formats: ^Pixel_Format,
+	valid_sw_formats: ^Pixel_Format,
+	min_width:        i32,
+	min_height:       i32,
+	max_width:        i32,
+	max_height:       i32,
+}
+
+Codec_Hardware_Config :: struct {
+	pix_fmt:     Pixel_Format,
+	methods:     i32,
+	device_type: Hardware_Device_Type,
+}
+
+Codec_HW_Config_Method :: enum i32 {
+	HW_Device_Context = 1,
+	HW_Frame_Context  = 2,
+	Internal          = 4,
+	AdHoc             = 8,
 }
 
 /**
@@ -3448,7 +3556,7 @@ URL_Protocol :: struct {
 	 * In blocking mode, wait for data/EOF/error with a short timeout (0.1s),
 	 * and return AVERROR(EAGAIN) on timeout.
 	 * Checking interrupt_callback, looping on EINTR and EAGAIN and until
-	 * enough data has been read is left to the calling function; see
+	 * enough data has been read is left to the calling function see
 	 * retry_transfer_wrapper in avio.c.
 	 */
 	url_read:                  #type proc(h: ^URL_Context, buf: [^]u8, size: i32)                         -> i32,
@@ -3776,7 +3884,7 @@ Format_Context :: struct {
 	fps_probe_size:                  i32,
 
 	/**
-	 * Error recognition; higher values will detect more errors but may
+	 * Error recognition higher values will detect more errors but may
 	 * misdetect some more or less valid parts as errors.
 	 * Demuxing only, set by the caller before avformat_open_input().
 	 */
@@ -4308,7 +4416,7 @@ Stream :: struct {
 	 *
 	 * @see av_format_inject_global_side_data()
 	 */
-	side_data: [^]Packet_Side_Data, // AVPacketSideData *side_data;
+	side_data: [^]Packet_Side_Data, // AVPacketSideData *side_data
 	/**
 	 * The number of elements in the AVStream.side_data array.
 	 */
@@ -4390,10 +4498,10 @@ Packet :: struct {
 	 * stored.
 	 * May be NULL, then the packet data is not reference-counted.
 	 */
-	buf:             rawptr, // BufferRef *buf;
+	buf:             rawptr, // BufferRef *buf
 
 	/**
-	 * Presentation timestamp in AVStream->time_base units; the time at which
+	 * Presentation timestamp in AVStream->time_base units the time at which
 	 * the decompressed packet will be presented to the user.
 	 * Can be AV_NOPTS_VALUE if it is not stored in the file.
 	 * pts MUST be larger or equal to dts as presentation cannot happen before
@@ -4404,7 +4512,7 @@ Packet :: struct {
 	pts:             i64,
 
 	/**
-	 * Decompression timestamp in AVStream->time_base units; the time at which
+	 * Decompression timestamp in AVStream->time_base units the time at which
 	 * the packet is decompressed.
 	 * Can be AV_NOPTS_VALUE if it is not stored in the file.
 	 */
@@ -4961,6 +5069,97 @@ Timebase_Source :: enum i32 {
 	Demuxer,
 	R_framerate,
 }
+
+/* ==============================================================================================
+	  SWRESAMPLE - SWRESAMPLE - SWRESAMPLE - SWRESAMPLE - SWRESAMPLE - SWRESAMPLE - SWRESAMPLE 
+   ============================================================================================== */
+
+Software_Resample_Flag :: 1
+
+Software_Resample_Dither_Flag :: enum i32 {
+	None                   =  0,
+	Rectangular,
+	Triangular,
+	Triangular_Highpass, 
+	Ns                     = 64,
+	Ns_Lipshitz,
+	NsF_Weighted,
+	Ns_Modified_E_Weighted,
+	Ns_Improved_E_Weighted,
+	Ns_Shibata,
+	Ns_Low_Shibata,
+	Ns_High_Shibata,
+	Not_Part_of_ABI,
+}
+
+Software_Resample_Engine :: enum i32 {
+	Swr,
+	Soxr,
+	Not_Part_of_ABI,
+}
+
+Software_Resample_Filter_Type :: enum i32 {
+	Cubic,
+	Blackman_Nuttall,
+	Kaiser,
+}
+
+Software_Resample_Context :: struct {}
+
+/* ==============================================================================================
+	  SWSCALE - SWSCALE - SWSCALE - SWSCALE - SWSCALE - SWSCALE - SWSCALE - SWSCALE - SWSCALE
+   ============================================================================================== */
+
+SWS_MAX_REDUCE_CUTOFF :: 0.002
+
+Software_Scale_Method :: enum i32 {
+	SWS_FAST_BILINEAR        = 1,
+	SWS_BILINEAR             = 2,
+	SWS_BICUBIC              = 4,
+	SWS_X                    = 8,
+	SWS_POINT                = 16,
+	SWS_AREA                 = 32,
+	SWS_BICUBLIN             = 64,
+	SWS_GAUSS                = 128,
+	SWS_SINC                 = 256,
+	SWS_LANCZOS              = 512,
+	SWS_SPLINE               = 1024,
+	SWS_SRC_V_CHR_DROP_MASK  = 196608,
+	SWS_SRC_V_CHR_DROP_SHIFT = 16,
+	SWS_PARAM_DEFAULT        = 123456,
+	SWS_PRINT_INFO           = 4096,
+	SWS_FULL_CHR_H_INT       = 8192,
+	SWS_FULL_CHR_H_INP       = 16384,
+	SWS_DIRECT_BGR           = 32768,
+	SWS_ACCURATE_RND         = 262144,
+	SWS_BITEXACT             = 524288,
+	SWS_ERROR_DIFFUSION      = 8388608,
+}
+
+Software_Scale_Color :: enum i32 {
+	SWS_CS_ITU709            = 1,
+	SWS_CS_FCC               = 4,
+	SWS_CS_ITU601            = 5,
+	SWS_CS_ITU624            = 5,
+	SWS_CS_SMPTE170M         = 5,
+	SWS_CS_SMPTE240M         = 7,
+	SWS_CS_DEFAULT           = 5,
+	SWS_CS_BT2020            = 9,
+}
+
+Software_Scale_Vector :: struct {
+	coeff:                   ^f64,
+	length:                  i32,
+}
+
+Software_Scale_Filter :: struct {
+	lumH : ^Software_Scale_Vector,
+	lumV : ^Software_Scale_Vector,
+	chrH : ^Software_Scale_Vector,
+	chrV : ^Software_Scale_Vector,
+}
+
+Sws_Context :: struct {}
 
 /* ==============================================================================================
 	  UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL - UTIL
@@ -5877,33 +6076,6 @@ Active_Format_Description :: enum i32 {
 
 FRAME_CROP_UNALIGNED :: 1
 
-Hardware_Device_Type :: enum i32 {
-	None,
-	VDPAU,
-	CUDA,
-	VAAPI,
-	DXVA2,
-	QSV,
-	VideoToolbox,
-	D3D11Va,
-	DRM,
-	OpenCL,
-	Media_Codec,
-	Vulkan,
-}
-
-Hardware_Device_Type_Frame_Transfer_Direction :: enum i32 {
-	From,
-	To,
-}
-
-Hardware_Device_Type_Frame_Mapping :: enum i32 {
-	Read      = 1,
-	Write     = 2,
-	Overwrite = 4,
-	Direct    = 8,
-}
-
 Buffer_Flag :: enum u32 {
 	Read_Only = 0,
 }
@@ -6370,44 +6542,6 @@ Frame :: struct {
 	private_ref:             ^Buffer_Ref,
 }
 
-Hardware_Device_Internal :: struct {}
-
-Hardware_Device_Context :: struct {
-	class:             ^Class,
-	internal:          ^Hardware_Device_Internal,
-	type:              Hardware_Device_Type,
-	hwctx:             rawptr,
-	free:              #type proc(ctx: ^Hardware_Device_Context),
-	user_opaque:       rawptr,
-}
-
-Hardware_Frames_Internal :: struct {}
-
-Hardware_Frames_Context :: struct {
-	_class:            ^Class,
-	internal:          ^Hardware_Frames_Internal,
-	device_ref:        ^Buffer_Ref,
-	device_ctx:        ^Hardware_Device_Context,
-	hwctx:             rawptr,
-	free:              #type proc(ctx: ^Hardware_Frames_Context),
-	user_opaque:       rawptr,
-	pool:              ^Buffer_Pool,
-	initial_pool_size: i32,
-	format:            Pixel_Format,
-	sw_format:         Pixel_Format,
-	width:             i32,
-	height:            i32,
-}
-
-Hardware_Frames_Constraints :: struct {
-	valid_hw_formats: ^Pixel_Format,
-	valid_sw_formats: ^Pixel_Format,
-	min_width:        i32,
-	min_height:       i32,
-	max_width:        i32,
-	max_height:       i32,
-}
-
 FIFO_Buffer :: struct {
 	buffer:           [^]u8,
 	read_ptr:         rawptr,
@@ -6471,19 +6605,6 @@ Decoding_For :: enum i32 {
 Abort_On :: enum i32 {
 	Empty_Output        = 1,
 	Empty_Output_Stream = 2,
-}
-
-Hardware_Accelerator_ID :: enum i32 {
-	None = 0,
-	Auto,
-	Generic,
-	Video_Toolbox,
-}
-
-Hardware_Device :: struct {
-	name:       cstring,
-	type:       Hardware_Device_Type,
-	device_ref: ^Buffer_Ref,
 }
 
 /* select an input stream for an output stream */
@@ -6729,19 +6850,294 @@ Output_Stream :: struct {
 }
 
 Output_Filter :: struct {
-	filter:          ^Filter_Context,
-	ost:             ^Output_Stream,
-	graph:           ^Filter_Graph,
-	name:            cstring,
-	out_tmp:         ^Filter_In_Out,
-	type:            Media_Type,
-	width:           i32,
-	height:          i32,
-	frame_rate:      Rational,
-	format:          i32,
-	sample_rate:     i32,
-	channel_layout:  u64,
-	formats:         ^i32,
-	channel_layouts: ^u64,
-	sample_rates:    ^i32,
+	filter:                             ^Filter_Context,
+	ost:                                ^Output_Stream,
+	graph:                              ^Filter_Graph,
+	name:                               cstring,
+	out_tmp:                            ^Filter_In_Out,
+	type:                               Media_Type,
+	width:                              i32,
+	height:                             i32,
+	frame_rate:                         Rational,
+	format:                             i32,
+	sample_rate:                        i32,
+	channel_layout:                     u64,
+	formats:                            ^i32,
+	channel_layouts:                    ^u64,
+	sample_rates:                       ^i32,
+}
+
+Command_Opt_Flag :: enum i32 {
+	ARG      = 0,
+	BOOL     = 1,
+	EXPERT   = 2,
+	STRING   = 3,
+	VIDEO    = 4,
+	AUDIO    = 5,
+	INT      = 7,
+	FLOAT    = 8,
+	SUBTITLE = 9,
+	INT64    = 10,
+	EXIT     = 11,
+	DATA     = 12,
+	PERFILE  = 13,
+	OFFSET   = 14,
+	SPEC     = 15,
+	TIME     = 16,
+	DOUBLE   = 17,
+	INPUT    = 18,
+	OUTPUT   = 19,
+}
+Command_Opt_Flags :: bit_set[Command_Opt_Flag; i32]
+
+Command_Opt_Type_Union :: struct #raw_union {
+	str:                                cstring,
+	i:                                  i32,
+	i_64:                               i64,
+	ui64:                               u64,
+	f:                                  f32,
+	dbl:                                f64,
+}
+
+Specifier_Opt :: struct {
+	specifier:                          cstring,
+	u:                                  Command_Opt_Type_Union,
+}
+
+Command_Option_Def :: struct {
+	name:                               cstring,
+	flags:                              i32,
+	u:                                  Command_Value_Union,
+	help:                               cstring,
+	argname:                            cstring,
+}
+
+Command_Option :: struct {
+	opt:                                ^Command_Option_Def,
+	key:                                cstring,
+	val:                                cstring,
+}
+
+Command_Option_Group_Def :: struct {
+	name:                               cstring,
+	sep:                                cstring,
+	flags:                              i32,
+}
+
+Command_Option_Group :: struct {
+	group_def:                          ^Command_Option_Group_Def,
+	arg:                                cstring,
+	opts:                               ^Option,
+	nb_opts:                            i32,
+	codec_opts:                         ^Dictionary,
+	format_opts:                        ^Dictionary,
+	sws_dict:                           ^Dictionary,
+	swr_opts:                           ^Dictionary,
+}
+
+Command_Option_Group_List :: struct {
+	group_def:                          ^Command_Option_Group_Def,
+	groups:                             ^Command_Option_Group,
+	nb_groups:                          i32,
+}
+
+Command_Option_Parse_Context :: struct {
+	global_opts:                        Command_Option_Group,
+	groups:                             ^Command_Option_Group_List,
+	nb_groups:                          i32,
+	cur_group:                          Command_Option_Group,
+}
+
+Command_Value_Union :: struct #raw_union {
+	dst_ptr:                            rawptr,
+	func_arg:                           #type proc(ctx: rawptr, arg1: cstring, arg2: cstring) -> i32,
+	off:                                u64,
+}
+
+Options_Context :: struct {
+	g:                                  ^Command_Option_Group,
+	start_time:                         i64,
+	start_time_eof:                     i64,
+	seek_timestamp:                     i32,
+	format:                             cstring,
+
+	codec_names:                        [^]Specifier_Opt,
+	nb_codec_names:                     i32,
+
+	audio_channels:                     [^]Specifier_Opt,
+	nb_audio_channels:                  i32,
+
+	audio_sample_rate:                  [^]Specifier_Opt,
+	nb_audio_sample_rate:               i32,
+
+	frame_rates:                        [^]Specifier_Opt,
+	nb_frame_rates:                     i32,
+
+	max_frame_rates:                    [^]Specifier_Opt,
+	nb_max_frame_rates:                 i32,
+
+	frame_sizes:                        [^]Specifier_Opt,
+	nb_frame_sizes:                     i32,
+
+	frame_pix_fmts:                     [^]Specifier_Opt,
+	nb_frame_pix_fmts:                  i32,
+
+	input_ts_offset:                    i64,
+	loop:                               i32,
+	rate_emu:                           i32,
+	readrate:                           f32,
+	accurate_seek:                      i32,
+	thread_queue_size:                  i32,
+
+	ts_scale:                           [^]Specifier_Opt,
+	nb_ts_scale:                        i32,
+
+	dump_attachment:                    [^]Specifier_Opt,
+	nb_dump_attachment:                 i32,
+
+	hwaccels:                           [^]Specifier_Opt,
+	nb_hwaccels:                        i32,
+
+	hwaccel_devices:                    [^]Specifier_Opt,
+	nb_hwaccel_devices:                 i32,
+
+	hwaccel_output_formats:             [^]Specifier_Opt,
+	nb_hwaccel_output_formats:          i32,
+
+	autorotate:                         [^]Specifier_Opt,
+	nb_autorotate:                      i32,
+
+	stream_maps:                        [^]Stream_Map,
+	nb_stream_maps:                     i32,
+
+	audio_channel_maps:                 [^]Audio_Channel_Map,
+	nb_audio_channel_maps:              i32,
+
+	metadata_global_manual:             i32,
+	metadata_streams_manual:            i32,
+	metadata_chapters_manual:           i32,
+
+	attachments:                        [^]cstring,
+	nb_attachments:                     i32,
+
+	chapters_input_file:                i32,
+	recording_time:                     i64,
+	stop_time:                          i64,
+	limit_filesize:                     u64,
+	mux_preload:                        f32,
+	mux_max_delay:                      f32,
+	shortest:                           i32,
+	bitexact:                           i32,
+	video_disable:                      i32,
+	audio_disable:                      i32,
+	subtitle_disable:                   i32,
+	data_disable:                       i32,
+
+	streamid_map:                       [^]i32,
+	nb_streamid_map:                    i32,
+
+	metadata:                           [^]Specifier_Opt,
+	nb_metadata:                        i32,
+
+	max_frames:                         [^]Specifier_Opt,
+	nb_max_frames:                      i32,
+
+	bitstream_filters:                  [^]Specifier_Opt,
+	nb_bitstream_filters:               i32,
+
+	codec_tags:                         [^]Specifier_Opt,
+	nb_codec_tags:                      i32,
+
+	sample_fmts:                        [^]Specifier_Opt,
+	nb_sample_fmts:                     i32,
+
+	qscale:                             [^]Specifier_Opt,
+	nb_qscale:                          i32,
+
+	forced_key_frames:                  [^]Specifier_Opt,
+	nb_forced_key_frames:               i32,
+
+	force_fps:                          [^]Specifier_Opt,
+	nb_force_fps:                       i32,
+
+	frame_aspect_ratios:                [^]Specifier_Opt,
+	nb_frame_aspect_ratios:             i32,
+
+	rc_overrides:                       [^]Specifier_Opt,
+	nb_rc_overrides:                    i32,
+
+	intra_matrices:                     [^]Specifier_Opt,
+	nb_intra_matrices:                  i32,
+
+	inter_matrices:                     [^]Specifier_Opt,
+	nb_inter_matrices:                  i32,
+
+	chroma_intra_matrices:              [^]Specifier_Opt,
+	nb_chroma_intra_matrices:           i32,
+
+	top_field_first:                    [^]Specifier_Opt,
+	nb_top_field_first:                 i32,
+
+	metadata_map:                       [^]Specifier_Opt,
+	nb_metadata_map:                    i32,
+
+	presets:                            [^]Specifier_Opt,
+	nb_presets:                         i32,
+
+	copy_initial_nonkeyframes:          [^]Specifier_Opt,
+	nb_copy_initial_nonkeyframes:       i32,
+
+	copy_prior_start:                   [^]Specifier_Opt,
+	nb_copy_prior_start:                i32,
+
+	filters:                            [^]Specifier_Opt,
+	nb_filters:                         i32,
+
+	filter_scripts:                     [^]Specifier_Opt,
+	nb_filter_scripts:                  i32,
+
+	reinit_filters:                     [^]Specifier_Opt,
+	nb_reinit_filters:                  i32,
+
+	fix_sub_duration:                   [^]Specifier_Opt,
+	nb_fix_sub_duration:                i32,
+
+	canvas_sizes:                       [^]Specifier_Opt,
+	nb_canvas_sizes:                    i32,
+
+	pass:                               [^]Specifier_Opt,
+	nb_pass:                            i32,
+
+	passlogfiles:                       [^]Specifier_Opt,
+	nb_passlogfiles:                    i32,
+
+	max_muxing_queue_size:              [^]Specifier_Opt,
+	nb_max_muxing_queue_size:           i32,
+
+	muxing_queue_data_threshold:        [^]Specifier_Opt,
+	nb_muxing_queue_data_threshold:     i32,
+
+	guess_layout_max:                   [^]Specifier_Opt,
+	nb_guess_layout_max:                i32,
+
+	apad:                               [^]Specifier_Opt,
+	nb_apad:                            i32,
+
+	discard:                            [^]Specifier_Opt,
+	nb_discard:                         i32,
+
+	disposition:                        [^]Specifier_Opt,
+	nb_disposition:                     i32,
+
+	program:                            [^]Specifier_Opt,
+	nb_program:                         i32,
+
+	time_bases:                         [^]Specifier_Opt,
+	nb_time_bases:                      i32,
+
+	enc_time_bases:                     [^]Specifier_Opt,
+	nb_enc_time_bases:                  i32,
+
+	autoscale:                          [^]Specifier_Opt,
+	nb_autoscale:                       i32,
 }

@@ -9,20 +9,22 @@ Use your own ffmpeg shared libraries or those provided under [shared](shared). T
 # Roadmap
 ## Done
 ### Structs and enums
-[X] LibAVCodec
-[X] LibAVFormat
-[X] LibAVUtil
-[X] LibAVFilter
+* [X] LibAVCodec
+* [X] LibAVDevice
+* [X] LibAVFormat
+* [X] LibAVUtil
+* [X] LibAVFilter
+* [X] LibSWResample
+* [X] LibSWScale
+* [X] FFMPEG.h
+* [X] CmdUtils
 
 ## In Progress
-[ ] FFMPEG.h
-[ ] CmdUtils
+
 
 ## To do
 
-[ ] LibAVDevice
-[ ] LibSWResample
-[ ] LibSWScale
+
 
 # License
 
