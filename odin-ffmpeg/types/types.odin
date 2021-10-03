@@ -884,7 +884,7 @@ Codec_Context :: struct {
 	draw_horiz_band:               #type proc(ctx: ^Codec_Context, src: ^Frame, offset: [NUM_DATA_POINTERS]i32, y: i32, type: i32, height: i32),
 
 	/**
-	 * callback to negotiate the pixelFormat
+	 * callback to negotiate the Pixel_Format
 	 * @param fmt is the list of formats which are supported by the codec,
 	 * it is terminated by -1 as 0 is a valid format, the formats are ordered by quality.
 	 * The first is always the native one.
@@ -1310,7 +1310,7 @@ Codec_Context :: struct {
 	 * - width, height (video only)
 	 * - sample_rate, channel_layout, nb_samples (audio only)
 	 * Their values may differ from the corresponding values in
-	 * AVCodecContext. This callback must use the frame values, not the codec
+	 * AVCodec_Context. This callback must use the frame values, not the codec
 	 * context values, to calculate the required buffer size.
 	 *
 	 * This callback must fill the following fields in the frame:
@@ -1870,7 +1870,7 @@ Codec_Context :: struct {
 	 *             format, this field should be set by the caller to a reference
 	 *             to the AVHWFramesContext describing input frames.
 	 *             AVHWFramesContext.format must be equal to
-	 *             AVCodecContext.pix_fmt.
+	 *             AVCodec_Context.pix_fmt.
 	 *
 	 *             This field should be set before avcodec_open2() is called.
 	 */
@@ -1929,7 +1929,7 @@ Codec_Context :: struct {
 	 * decoding (if active).
 	 * - encoding: unused
 	 * - decoding: Set by user (either before avcodec_open2(), or in the
-	 *             AVCodecContext.get_format callback)
+	 *             AVCodec_Context.get_format callback)
 	 */
 	hwaccel_flags:                 Hardware_Accelerator_Flags,
 
@@ -1953,7 +1953,7 @@ Codec_Context :: struct {
 	 * libavcodec is unable to apply cropping from the top/left border.
 	 *
 	 * @note when this option is set to zero, the width/height fields of the
-	 * AVCodecContext and output AVFrames have different meanings. The codec
+	 * AVCodec_Context and output AVFrames have different meanings. The codec
 	 * context fields store display dimensions (with the coded dimensions in
 	 * coded_width/height), while the frame fields store the coded dimensions
 	 * (with the display dimensions being determined by the crop_* fields).
@@ -2048,8 +2048,6 @@ Codec_Context :: struct {
  * @{
  */
 Hardware_Accelerator :: struct{}
-
-Hardware_Device      :: struct{}
 
 Subtitle_Flag_Forced :: 0x00000001
 
@@ -2158,7 +2156,7 @@ Codec_Parser_Context :: struct {
 
 	/**
 	 * Offset of the current timestamp against last timestamp sync point in
-	 * units of AVCodecContext.time_base.
+	 * units of AVCodec_Context.time_base.
 	 *
 	 * Set to INT_MIN when dts_sync_point unused. Otherwise, it must
 	 * contain a valid timestamp offset.
@@ -2172,7 +2170,7 @@ Codec_Parser_Context :: struct {
 	dts_ref_dts_delta:       i32,
 
 	/**
-	 * Presentation delay of current frame in units of AVCodecContext.time_base.
+	 * Presentation delay of current frame in units of AVCodec_Context.time_base.
 	 *
 	 * Set to INT_MIN when dts_sync_point unused. Otherwise, it must
 	 * contain valid non-negative timestamp delta (presentation time of a frame
@@ -2204,8 +2202,8 @@ Codec_Parser_Context :: struct {
 
 	/**
 	 * Duration of the current frame.
-	 * For audio, this is in units of 1 / AVCodecContext.sample_rate.
-	 * For all other types, this is in units of AVCodecContext.time_base.
+	 * For audio, this is in units of 1 / AVCodec_Context.sample_rate.
+	 * For all other types, this is in units of AVCodec_Context.time_base.
 	 */
 	duration:                i32,
 
@@ -2242,7 +2240,7 @@ Codec_Parser_Context :: struct {
 	coded_height:            i32,
 
 	/**
-	 * The format of the coded data, corresponds to enum AVPixelFormat for video
+	 * The format of the coded data, corresponds to enum AVPixel_Format for video
 	 * and for enum AVSampleFormat for audio.
 	 *
 	 * Note that a decoder can have considerable freedom in how exactly it
@@ -3021,7 +3019,7 @@ Device_Info_List :: struct {
  *                      type: AV_OPT_TYPE_INT64
  *  - Capabilities valid for video devices:
  *    - pixel_format:   supported pixel formats.
- *                      type: AV_OPT_TYPE_INT (AVPixelFormat value)
+ *                      type: AV_OPT_TYPE_INT (AVPixel_Format value)
  *    - window_size:    supported window sizes (describes size of the window size presented to the user).
  *                      type: AV_OPT_TYPE_IMAGE_SIZE
  *    - frame_size:     supported frame sizes (describes size of provided video frames).
@@ -3054,6 +3052,140 @@ Device_Capabilities_Query :: struct {
 
 	fps:                Rational,
 }
+
+/* ==============================================================================================
+	  FILTERS - FILTERS - FILTERS - FILTERS - FILTERS - FILTERS - FILTERS - FILTERS - FILTERS 
+   ============================================================================================== */
+
+Filter_Link_Init :: enum i32 {
+	Uninit = 0,
+	Startinit,
+	Init,
+}
+
+Filter_Auto_Convert :: enum i32 {
+	All = 0,
+	None = -1,
+}
+
+Filter_Context :: struct {
+	av_class:            ^Class,
+	filter:              ^Filter,
+	name:                cstring,
+	input_pads:          ^Filter_Pad,
+	inputs:              ^[^]Filter_Link,
+	nb_inputs:           u32,
+	output_pads:         ^Filter_Pad,
+	outputs:             ^[^]Filter_Link,
+	nb_outputs:          u32,
+	priv:                rawptr,
+	graph:               ^Filter_Graph,
+	thread_type:         i32,
+	internal:            ^Filter_Internal,
+	command_queue:       ^Filter_Command,
+	enable_str:          cstring,
+	enable:              rawptr,
+	var_values:          ^f64,
+	is_disabled:         i32,
+	hw_device_ctx:       ^Buffer_Ref,
+	nb_threads:          i32,
+	ready:               u32,
+	extra_hw_frames:     i32,
+}
+
+Filter_Link :: struct {
+	src:                 ^Filter_Context,
+	srcpad:              ^Filter_Pad,
+	dst:                 ^Filter_Context,
+	dstpad:              ^Filter_Pad,
+	type:                Media_Type,
+	w:                   i32,
+	h:                   i32,
+	sample_aspect_ratio: Rational,
+	channel_layout:      u64,
+	sample_rate:         i32,
+	format:              i32,
+	time_base:           Rational,
+	incfg:               Filter_Formats_Config,
+	outcfg:              Filter_Formats_Config,
+	init_state:          Filter_Link_Init,
+	graph:               ^Filter_Graph,
+	current_pts:         i64,
+	current_pts_us:      i64,
+	age_index:           i32,
+	frame_rate:          Rational,
+	min_samples:         i32,
+	max_samples:         i32,
+	channels:            i32,
+	frame_count_in:      i64,
+	frame_count_out:     i64,
+	sample_count_in:     i64,
+	sample_count_out:    i64,
+	frame_pool:          rawptr,
+	frame_wanted_out:    i32,
+	hw_frames_ctx:       ^Buffer_Ref,
+	reserved:            [61440]u8,
+}
+Filter :: struct {
+	name:                cstring,
+	description:         cstring,
+	inputs:              [^]Filter_Pad,
+	outputs:             [^]Filter_Pad,
+	priv_class:          ^Class,
+	flags:               i32,
+	nb_inputs:           u16,
+	nb_outputs:          u16,
+	preinit:             #type proc(ctx: ^Filter_Context) -> i32,
+	init:                #type proc(ctx: ^Filter_Context) -> i32,
+	init_dict:           #type proc(ctx: ^Filter_Context, options: ^[^]Dictionary) -> i32,
+	uninit:              #type proc(ctx: ^Filter_Context),
+	query_formats:       #type proc(ctx: ^Filter_Context) -> i32,
+	priv_size:           i32,
+	flags_internal:      i32,
+	process_command:     #type proc(ctx: ^Filter_Context, cmd: cstring, arg: cstring, res: cstring, res_len: i32, flags: i32) -> i32,
+	activate:            #type proc(ctx: ^Filter_Context) -> i32,
+}
+
+Filter_Graph_Action_Callback  :: #type proc(ctx: Filter_Context, arg: rawptr, jobnr: i32, nb_jobs: i32) -> i32
+Filter_Graph_Execute_Callback :: #type proc(ctx: Filter_Context, func: Filter_Graph_Action_Callback, arg: rawptr, ret: ^i32, nb_jobs: i32) -> i32
+
+
+Filter_Graph :: struct {
+	av_class:             ^Class,
+	filters:              ^[^]Filter_Context,
+	nb_filters:           u32,
+	scale_sws_opts:       cstring,
+	thread_type:          i32,
+	nb_threads:           i32,
+	internal:             ^Filter_Graph_Internal,
+	_opaque:              rawptr,
+	execute:              Filter_Graph_Execute_Callback,
+	aresample_swr_opts:   cstring,
+	sink_links:           ^[^]Filter_Link,
+	sink_links_count:     i32,
+	disable_auto_convert: u32,
+}
+
+Filter_Formats_Config :: struct {
+	formats:         ^Filter_Formats,
+	samplerates:     ^Filter_Formats,
+	channel_layouts: ^Filter_Channel_Layouts,
+}
+
+Filter_In_Out :: struct {
+	name:       cstring,
+	filter_ctx: ^Filter_Context,
+	pad_idx:    i32,
+	next:       ^Filter_In_Out,
+}
+
+
+Filter_Command         :: struct {}
+Filter_Pad             :: struct {}
+Filter_Formats         :: struct {}
+Filter_Channel_Layouts :: struct {}
+Filter_Internal        :: struct {}
+Filter_Graph_Internal  :: struct {}
 
 /* ==============================================================================================
 	  FORMATS - FORMATS - FORMATS - FORMATS - FORMATS - FORMATS - FORMATS - FORMATS - FORMATS
@@ -3686,7 +3818,7 @@ Format_Context :: struct {
 
 	/**
 	 * Allow non-standard and experimental extension
-	 * @see AVCodecContext.strict_std_compliance
+	 * @see AVCodec_Context.strict_std_compliance
 	 */
 	strict_std_compliance:           i32,
 
@@ -4549,7 +4681,7 @@ Packet_Side_Data_Type :: enum i32 {
 	/**
 	 * Producer Reference Time data corresponding to the AVProducerReferenceTime struct,
 	 * usually exported by some encoders (on demand through the prft flag set in the
-	 * AVCodecContext export_side_data field).
+	 * AVCodec_Context export_side_data field).
 	 */
 	PRFT,
 
@@ -6059,10 +6191,10 @@ Frame :: struct {
 	/**
 	 * reordered opaque 64 bits (generally an integer or a double precision float
 	 * PTS but can be anything).
-	 * The user sets AVCodecContext.reordered_opaque to represent the input at
+	 * The user sets AVCodec_Context.reordered_opaque to represent the input at
 	 * that time,
 	 * the decoder reorders values as needed and sets AVFrame.reordered_opaque
-	 * to exactly one of the values provided by the user through AVCodecContext.reordered_opaque
+	 * to exactly one of the values provided by the user through AVCodec_Context.reordered_opaque
 	 */
 	reordered_opaque:        i64,
 
@@ -6274,4 +6406,342 @@ Hardware_Frames_Constraints :: struct {
 	min_height:       i32,
 	max_width:        i32,
 	max_height:       i32,
+}
+
+FIFO_Buffer :: struct {
+	buffer:           [^]u8,
+	read_ptr:         rawptr,
+	write_ptr:        rawptr,
+	end:              rawptr,
+	rndx:             u32,
+	wndx:             u32,
+}
+
+PThread_Condition :: distinct rawptr
+
+PThread_Fast_Lock :: struct {
+	status:           u64,
+	spinlock:         i32,
+}
+
+PThread_Descr ::      rawptr
+
+PThread_Mutex :: struct {
+	reserved:         i32,
+	count:            i32,
+
+	owner:            PThread_Descr,
+	kind:             i32,
+	lock:             PThread_Fast_Lock,
+}
+
+PThread           :: distinct u64
+
+Thread_Message_Queue :: struct {
+	fifo:             ^FIFO_Buffer,
+	lock:             PThread_Mutex,
+	cond_recv:        PThread_Condition,
+	cond_send:        PThread_Condition,
+	err_send:         i32,
+	err_recv:         i32,
+	elsize:           u32,
+	free_func:        #type proc(msg: rawptr),
+}
+
+/* ==============================================================================================
+	   FFMPEG - FFMPEG - FFMPEG - FFMPEG - FFMPEG - FFMPEG - FFMPEG - FFMPEG - FFMPEG - FFMPEG
+   ============================================================================================== */
+
+VSync :: enum i32 {
+	AUTO        = -1,
+	PASSTHROUGH =  0,
+	CFR         =  1,
+	VFR         =  2,
+	VSCFR       =  0xfe,
+	DROP        =  0xff,
+}
+
+MAX_STREAMS :: 1024    /* arbitrary sanity check value */
+
+Decoding_For :: enum i32 {
+	OST    = 1,
+	FILTER = 2,
+}
+
+Abort_On :: enum i32 {
+	Empty_Output        = 1,
+	Empty_Output_Stream = 2,
+}
+
+Hardware_Accelerator_ID :: enum i32 {
+	None = 0,
+	Auto,
+	Generic,
+	Video_Toolbox,
+}
+
+Hardware_Device :: struct {
+	name:       cstring,
+	type:       Hardware_Device_Type,
+	device_ref: ^Buffer_Ref,
+}
+
+/* select an input stream for an output stream */
+Stream_Map :: struct {
+	disabled:          i32,     /* 1 is this mapping is disabled by a negative map */
+	file_index:        i32,
+	stream_index:      i32,
+	sync_file_index:   i32,
+	sync_stream_index: i32,
+	link_label:        cstring, /* name of an output link, for mapping lavfi outputs */
+}
+
+Audio_Channel_Map :: struct {
+	// Input
+	file_idx:    i32,
+	stream_idx:  i32,
+	channel_idx: i32,
+	// Output
+	ofile_idx:   i32,
+	ostream_idx: i32,
+}
+
+Forced_Keyframes :: enum i32 {
+	N,
+	N_forced,
+	PrevForcedN,
+	fPrevForcedT,
+	T,
+	Not_Part_of_ABI,
+}
+
+OST_Finished :: enum i32 {
+	Encoder_Finished = 1,
+	Muxer_Finished   = 2,
+}
+
+Input_File :: struct {
+	ctx:                ^Format_Context,
+	eof_reached:        b32,
+	e_again:            b32,
+	input_stream_index: i32,
+	loop:               i32,
+	duration:           i64,
+	time_base:          Rational,
+	input_ts_offset:    i64,
+	ts_offset:          i64,
+	last_ts:            i64,
+	start_time:         i64,
+	recording_time:     i64,
+	nb_streams:         i32,
+	nb_streams_warn:    i32,
+	rate_emu:           i32,
+	readrate:           f32,
+	accurate_seek:      i32,
+	pkt:                ^Packet,
+	in_thread_queue:    ^Thread_Message_Queue,
+	thread:             PThread,
+	non_blocking:       i32,
+	joined:             i32,
+	thread_queue_size:  i32,
+}
+
+Input_Stream :: struct {
+	file_index:                   i32,
+	st:                           ^Stream,
+	discard:                      i32,
+	user_set_discard:             i32,
+	decoding_needed:              i32,
+	dec_ctx:                      ^Codec_Context,
+	dec:                          ^Codec,
+	decoded_frame:                ^Frame,
+	filter_frame:                 ^Frame,
+	pkt:                          ^Packet,
+	start:                        i64,
+	next_dts:                     i64,
+	first_dts:                    i64,
+	dts:                          i64,
+	next_pts:                     i64,
+	pts:                          i64,
+	wrap_correction_done:         i32,
+	filter_in_rescale_delta_last: i64,
+	min_pts:                      i64,
+	max_pts:                      i64,
+	cfr_next_pts:                 i64,
+	nb_samples:                   i64,
+	ts_scale:                     f64,
+	saw_first_ts:                 i32,
+	decoder_opts:                 ^Dictionary,
+	framerate:                    Rational,
+	top_field_first:              i32,
+	guess_layout_max:             i32,
+	autorotate:                   i32,
+	fix_sub_duration:             i32,
+	prev_sub:                     struct { got_output: i32, ret: i32, subtitle: Subtitle },
+	sub2video:                    struct { last_pts: i64, end_pts: i64, sub_queue: ^FIFO_Buffer, frame: ^Frame, w: i32,	h: i32,	initialize: u32 },
+	filters:                      ^[^]Input_Filter,
+	nb_filters:                   i32,
+	reinit_filters:               i32,
+
+	hwaccel_id:                   Hardware_Accelerator_ID,
+	hwaccel_device_type:          Hardware_Device_Type,
+	hwaccel_device:               cstring,
+	hwaccel_output_format:        Pixel_Format,
+	hwaccel_ctx:                  rawptr,
+	hwaccel_uninit:               #type proc(s: ^Codec_Context),
+	hwaccel_get_buffer:           #type proc(s: ^Codec_Context, frame: ^Frame, flags: i32) -> i32,
+	hwaccel_retrieve_data:        #type proc(s: ^Codec_Context,	frame: ^Frame) -> i32,
+	hwaccel_pix_fmt:              Pixel_Format,
+	hwaccel_retrieved_pix_fmt:    Pixel_Format,
+
+	hw_frames_ctx:                ^Buffer_Ref,
+	data_size:                    u64,
+	nb_packets:                   u64,
+	frames_decoded:               u64,
+	samples_decoded:              u64,
+	dts_buffer:                   ^i64,
+	nb_dts_buffer:                i32,
+	got_output:                   i32,
+}
+
+// TODO(Jeroen): Replace placeholder rawptrs with proper struct pointers.
+
+Input_Filter :: struct {
+	filter:                       rawptr, // ^Filter_Context,
+	ist: ^Input_Stream,
+	graph:                        rawptr, // ^Filter_Graph,
+	name: ^u8,
+	type: Media_Type,
+	frame_queue : ^FIFO_Buffer,
+	format : i32,
+	width : i32,
+	height : i32,
+	sample_aspect_ratio: Rational,
+	sample_rate : i32,
+	channels : i32,
+	channel_layout : u64,
+	hw_frames_ctx : ^Buffer_Ref,
+	displaymatrix : ^i32,
+	eof : i32,
+}
+
+FilterGraph :: struct {
+	index:           i32,
+	graph_desc:      cstring,
+	graph:           ^FilterGraph,
+	reconfiguration: i32,
+	inputs:          ^[^]Input_Filter,
+	nb_inputs:       i32,
+	outputs:         ^[^]Output_Filter,
+	nb_outputs:      i32,
+}
+
+
+
+
+OutputFile :: struct {
+	ctx:                ^Format_Context,
+	opts:               ^Dictionary,
+	ost_index:          i32,
+	recording_time:     i64,
+	start_time:         i64,
+	limit_filesize:     u64,
+	shortest:           i32,
+	header_written:     i32,
+}
+
+File :: distinct u64
+
+Output_Stream :: struct {
+	file_index:                         i32,
+	index:                              i32,
+	source_index:                       i32,
+	st:                                 ^Stream,
+	encoding_needed:                    i32,
+	frame_number:                       i32,
+	sync_ist:                           ^Input_Stream,
+	sync_opts:                          i64,
+	first_pts:                          i64,
+	last_mux_dts:                       i64,
+	mux_timebase:                       Rational,
+	enc_timebase:                       Rational,
+	bsf_ctx:                            ^BSF_Context,
+	enc_ctx:                            ^Codec_Context,
+	ref_par:                            ^Codec_Parameters,
+	enc:                                ^Codec,
+	max_frames:                         i64,
+	filtered_frame:                     ^Frame,
+	last_frame:                         ^Frame,
+	pkt:                                ^Packet,
+	last_dropped:                       i32,
+	last_nb0_frames:                    [3]i32,
+	hwaccel_ctx:                        rawptr,
+	frame_rate:                         Rational,
+	max_frame_rate:                     Rational,
+	is_cfr:                             i32,
+	force_fps:                          i32,
+	top_field_first:                    i32,
+	rotate_overridden:                  i32,
+	autoscale:                          i32,
+	rotate_override_value:              f64,
+	frame_aspect_ratio:                 Rational,
+	forced_kf_ref_pts:                  i64,
+	forced_kf_pts:                      ^i64,
+	forced_kf_count:                    i32,
+	forced_kf_index:                    i32,
+	forced_keyframes:                   cstring,
+	forced_keyframes_pexpr:             rawptr, // ^Expr,
+	forced_keyframes_expr_const_values: [5]f64,
+	dropped_keyframe:                   i32,
+	audio_channels_map:                 ^i32,
+	audio_channels_mapped:              i32,
+	logfile_prefix:                     cstring,
+	logfile:                            ^File,
+	filter:                             ^Output_Filter,
+	avfilter:                           cstring,
+	filters:                            cstring,
+	filters_script:                     cstring,
+	encoder_opts:                       ^Dictionary,
+	sws_dict:                           ^Dictionary,
+	swr_opts:                           ^Dictionary,
+	apad:                               cstring,
+	finished:                           OST_Finished,
+	unavailable:                        i32,
+	stream_copy:                        i32,
+	initialized:                        i32,
+	inputs_done:                        i32,
+	attachment_filename:                cstring,
+	copy_initial_nonkeyframes:          i32,
+	copy_prior_start:                   i32,
+	disposition:                        cstring,
+	keep_pix_fmt:                       i32,
+	data_size:                          u64,
+	packets_written:                    u64,
+	frames_encoded:                     u64,
+	samples_encoded:                    u64,
+	quality:                            i32,
+	max_muxing_queue_size:              i32,
+	muxing_queue:                       ^FIFO_Buffer,
+	muxing_queue_data_size:             i64,
+	muxing_queue_data_threshold:        i64,
+	pict_type:                          i32,
+	error:                              [4]i64,
+}
+
+Output_Filter :: struct {
+	filter:          ^Filter_Context,
+	ost:             ^Output_Stream,
+	graph:           ^Filter_Graph,
+	name:            cstring,
+	out_tmp:         ^Filter_In_Out,
+	type:            Media_Type,
+	width:           i32,
+	height:          i32,
+	frame_rate:      Rational,
+	format:          i32,
+	sample_rate:     i32,
+	channel_layout:  u64,
+	formats:         ^i32,
+	channel_layouts: ^u64,
+	sample_rates:    ^i32,
 }

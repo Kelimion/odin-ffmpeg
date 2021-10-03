@@ -6,6 +6,24 @@ This repository contains [Odin](https://odin-lang.org) bindings for [FFmpeg](htt
 
 Use your own ffmpeg shared libraries or those provided under [shared](shared). The provided Win64 DLLs are licensed under the LGPL v2.1.
 
+# Roadmap
+## Done
+### Structs and enums
+[X] LibAVCodec
+[X] LibAVFormat
+[X] LibAVUtil
+[X] LibAVFilter
+
+## In Progress
+[ ] FFMPEG.h
+[ ] CmdUtils
+
+## To do
+
+[ ] LibAVDevice
+[ ] LibSWResample
+[ ] LibSWScale
+
 # License
 
 The bindings are made available under FFmpeg's license (GNU LGPL, v2.1+). See `LICENSE.md`
